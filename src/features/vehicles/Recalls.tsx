@@ -108,6 +108,13 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
         </>
       )}
       <section className="card">
+        <h2>Technical service bulletins</h2>
+        <p className="small" style={{ margin: 0 }}>
+          NHTSA publishes manufacturers' service bulletins and other communications only as a bulk download, with no per-vehicle lookup Auto Manager can use, so they aren't listed here. Search them for this vehicle on{" "}
+          <ExtLink href="https://www.nhtsa.gov/recalls">nhtsa.gov</ExtLink> (choose the vehicle, then “Manufacturer Communications”). Bulletins you have as PDFs can be imported under Manuals with the type “Technical service bulletin”.
+        </p>
+      </section>
+      <section className="card">
         <h2>
           <Star size={16} aria-hidden /> NHTSA 5-Star Safety Ratings
         </h2>

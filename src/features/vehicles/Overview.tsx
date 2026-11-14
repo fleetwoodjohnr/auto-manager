@@ -1,3 +1,4 @@
+import { Attachments } from "../shared/Attachments";
 import { Boxes, BookOpen, Wrench, Info } from "lucide-react";
 import { useCmd } from "../../api/queries";
 import type { Job, Manual, SpecField, VehicleDetail, VehicleMatches } from "../../api/types";
@@ -123,6 +124,7 @@ export default function Overview({ d }: { d: VehicleDetail }) {
             </dl>
           </section>
         )}
+        <Attachments ownerKind="vehicle" ownerId={v.id} title="Photos and documents" />
         {v.customer_id && (
           <button className="btn" onClick={() => go({ page: "customers", id: v.customer_id! })}>
             Open owner record

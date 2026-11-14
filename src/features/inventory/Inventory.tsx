@@ -12,6 +12,7 @@ import { ImportInventory } from "./ImportInventory";
 import { movementLabel } from "../dashboard/Dashboard";
 import { Purchasing } from "./Purchasing";
 import { Labels } from "./Labels";
+import { SavedSearches } from "../shared/SavedSearches";
 
 export default function Inventory() {
   const { route, setTab, go } = useApp();
@@ -111,6 +112,16 @@ function ItemList({ low, onLabels, onAdd }: { low: boolean; onLabels: (i: Item[]
           </button>
         )}
       </div>
+      <SavedSearches
+        page={low ? "inventory-low" : "inventory"}
+        filters={{ q, cat, loc, archived }}
+        onApply={(f) => {
+          setQ(String(f.q ?? ""));
+          setCat(String(f.cat ?? ""));
+          setLoc(String(f.loc ?? ""));
+          setArchived(!!f.archived);
+        }}
+      />
       <Loaded q={items}>
         {(rows) =>
           rows.length === 0 ? (

@@ -1,3 +1,4 @@
+import { Attachments } from "../shared/Attachments";
 import { useState } from "react";
 import { Archive, ArchiveRestore, ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardList, Cog, PackageCheck, Pencil, Printer, RotateCcw, SlidersHorizontal, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { call, errorMessage } from "../../api/ipc";
@@ -205,6 +206,7 @@ export default function ItemPage() {
                     </details>
                   </section>
                   <SupplierPricing itemId={i.id} />
+                  <Attachments ownerKind="item" ownerId={i.id} />
                   <section className="card">
                     <h2>History</h2>
                     {d.movements.length === 0 ? (

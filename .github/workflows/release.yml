@@ -1,0 +1,130 @@
+name: Release
+# Push a tag vX.Y.Z (stable) or vX.Y.Z-beta.N (beta channel). Builds every platform natively,
+# signs updater packages with TAURI_SIGNING_PRIVATE_KEY, verifies every signature, and publishes
+# a GitHub Release with latest.json for the in-app updater.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, platform: linux, arch: x86_64 }
+          - { os: ubuntu-22.04-arm, target: aarch64-unknown-linux-gnu, platform: linux, arch: aarch64 }
+          - { os: windows-2022, target: x86_64-pc-windows-msvc, platform: windows, arch: x86_64 }
+          - { os: windows-11-arm, target: aarch64-pc-windows-msvc, platform: windows, arch: aarch64 }
+          - { os: macos-15-intel, target: x86_64-apple-darwin, platform: darwin, arch: x86_64 }
+          - { os: macos-15, target: aarch64-apple-darwin, platform: darwin, arch: aarch64 }
+    runs-on: ${{ matrix.os }}
+    env:
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      HAS_WINDOWS_SIGN: ${{ secrets.WINDOWS_SIGN_COMMAND != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Verify native runner architecture
+        shell: bash
+        run: rustc -vV | grep -q "host: ${{ matrix.target }}"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2 rpm
+      - run: npm ci
+      - run: node scripts/check-version.mjs
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+      - run: npm test
+      - run: cargo test --workspace --locked
+      - name: Build and sign
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINDOWS_SIGN_COMMAND: ${{ secrets.WINDOWS_SIGN_COMMAND }}
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY" || { echo "TAURI_SIGNING_PRIVATE_KEY secret is missing: updates can't be signed"; exit 1; }
+          # Without Apple credentials Tauri ad-hoc signs (users must allow the app in Privacy & Security).
+          if [ "$HAS_APPLE_CERT" != "true" ]; then unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; fi
+          extra=()
+          if [ "$HAS_WINDOWS_SIGN" = "true" ] && [ "$RUNNER_OS" = "Windows" ]; then
+            extra=(--config "{\"bundle\":{\"windows\":{\"signCommand\":\"$WINDOWS_SIGN_COMMAND %1\"}}}")
+          fi
+          npx tauri build --target ${{ matrix.target }} "${extra[@]}" -- --locked
+      - name: Smoke test the built app
+        shell: bash
+        run: |
+          dir=$(mktemp -d)
+          case "$RUNNER_OS" in
+            Linux)   bin=target/${{ matrix.target }}/release/auto-manager ;;
+            Windows) bin=target/${{ matrix.target }}/release/auto-manager.exe ;;
+            macOS)   bin="$(ls -d target/${{ matrix.target }}/release/bundle/macos/*.app)/Contents/MacOS/auto-manager" ;;
+          esac
+          AUTO_MANAGER_DATA_DIR="$dir" "$bin" --self-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            target/${{ matrix.target }}/release/bundle/**/*.deb
+            target/${{ matrix.target }}/release/bundle/**/*.rpm
+            target/${{ matrix.target }}/release/bundle/**/*.AppImage
+            target/${{ matrix.target }}/release/bundle/**/*.dmg
+            target/${{ matrix.target }}/release/bundle/**/*.app.tar.gz
+            target/${{ matrix.target }}/release/bundle/**/*-setup.exe
+            target/${{ matrix.target }}/release/bundle/**/*.sig
+  publish:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: '{linux,windows,darwin}-*'
+      - run: node scripts/release-manifest.mjs release-artifacts
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: |
+            release-artifacts/latest.json
+            release-artifacts/SHA256SUMS
+      - if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          pre=""
+          latest="--latest"
+          if [[ "$RELEASE_TAG" == *-* ]]; then pre="--prerelease"; latest=""; fi
+          gh release create "$RELEASE_TAG" --verify-tag --draft $pre --title "Auto Manager $RELEASE_TAG" --notes-file release-artifacts/RELEASE_NOTES.md
+          find release-artifacts -type f ! -name RELEASE_NOTES.md -print0 | xargs -0 -n 1 gh release upload "$RELEASE_TAG"
+          gh release edit "$RELEASE_TAG" --draft=false $latest

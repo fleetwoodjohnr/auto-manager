@@ -26,10 +26,11 @@ pub struct AppInfo {
     pub debug: bool,
 }
 
+/// The version is the app's (tauri.conf.json), the one the updater compares against.
 #[tauri::command(async)]
-pub fn app_info(core: State<'_, Core>) -> AppResult<AppInfo> {
+pub fn app_info(app: AppHandle, core: State<'_, Core>) -> AppResult<AppInfo> {
     Ok(AppInfo {
-        version: env!("CARGO_PKG_VERSION").into(),
+        version: app.package_info().version.to_string(),
         schema_version: core.read(db::user_version)?,
         data_dir: core.paths.root.to_string_lossy().into(),
         log_dir: core.paths.logs().to_string_lossy().into(),

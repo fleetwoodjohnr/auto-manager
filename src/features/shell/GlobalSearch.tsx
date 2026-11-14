@@ -106,6 +106,7 @@ export default function GlobalSearch() {
   };
 
   let lastGroup = "";
+  const showing = open && (options.length > 0 || (!!dq && !!data));
   return (
     <div className="searchbox" role="search">
       <Search size={15} aria-hidden />
@@ -115,9 +116,9 @@ export default function GlobalSearch() {
         value={q}
         placeholder="Search VIN, vehicle, part number, SKU…"
         aria-label="Search everything"
-        aria-expanded={open}
-        aria-controls="search-results"
-        aria-activedescendant={options[active] ? `sr-${active}` : undefined}
+        aria-expanded={showing}
+        aria-controls={showing ? "search-results" : undefined}
+        aria-activedescendant={showing && options[active] ? `sr-${active}` : undefined}
         role="combobox"
         aria-autocomplete="list"
         onChange={(e) => {
@@ -129,7 +130,7 @@ export default function GlobalSearch() {
         onKeyDown={onKey}
       />
       {!q && <kbd aria-hidden>{mac ? "⌘K" : "Ctrl K"}</kbd>}
-      {open && (options.length > 0 || (dq && data)) && (
+      {showing && (
         <div className="results" id="search-results" role="listbox" aria-label="Search results">
           {options.map((o, i) => {
             const group = o.key.split(":")[0];

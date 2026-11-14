@@ -1,0 +1,20 @@
+# Changelog
+
+All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org). The release workflow publishes the section for each version as its release notes and in-app update notes.
+
+## [0.1.0] - 2026-11-14
+
+First release.
+
+- **Vehicle lookup.** NHTSA vPIC VIN decoding with check-digit validation, partial VINs, bulk CSV/Excel decoding, and identification without a VIN. Every value shows its source and confidence. Values no source provides are marked unavailable, never guessed. Your corrections are stored beside the originals. Offline copies of everything already looked up.
+- **More vehicle data.** NHTSA recalls (by model, with a per-VIN result you record), NHTSA 5-Star ratings, vPIC Canadian dimensions and EPA engine and fuel-economy data (model-level, you pick the matching configuration).
+- **Parts and fitment.** Hierarchical catalog. OEM, aftermarket, barcode, interchange and supplier numbers. Fitment records with conditions, and confirmed, conditional, possible, not compatible and unknown statuses. Supersession and interchange. Spreadsheet, ACES (with your VCdb export) and PIES imports.
+- **Inventory.** Ledger-based stock with locations and bins, reservations, counts, damage quarantine, returns, undo, weighted-average or last-cost valuation, imports with column mapping, labels, and a USB barcode scan field.
+- **Pricing and service.** Pricing profiles with explained prices. Estimates, jobs and invoices, with parts consumed from stock exactly once. Customers. Printable estimates and invoices.
+- **Maintenance.** Intervals from your manual, service history, and what's due.
+- **Manuals.** PDF library and viewer with search, contents, bookmarks, notes and printing. "Where Is It?" component lookup. Verified official owner-manual links.
+- **Diagnostics.** OBD-II code reference (OBDex, CC0). Read-only ELM327 scanner.
+- **Business.** Suppliers, prices and comparison, reorder assistant, purchase orders and receiving, reports with CSV/Excel/PDF output, Data Quality Center.
+- **Attachments and saved searches.** Photos and PDFs (receipts, invoices, diagrams) on vehicles, parts, items and jobs. Saved filters on the Inventory and Parts lists.
+- **Data.** Daily automatic backups, verified restore, encrypted transfer bundles, JSON export.
+- **Updates.** Signed updates from GitHub Releases, with stable and beta channels.

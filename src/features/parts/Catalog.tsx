@@ -6,6 +6,7 @@ import { useApp } from "../../store";
 import { cx, DataTable, Empty, Loaded, Modal, PageHead, ErrorNote } from "../../ui";
 import { emptyPart, PartFields } from "./PartForm";
 import { FitmentImport } from "./FitmentImport";
+import { SavedSearches } from "../shared/SavedSearches";
 
 export default function Catalog() {
   const { go, route } = useApp();
@@ -43,6 +44,15 @@ export default function Catalog() {
               ))}
             </select>
           </div>
+          <SavedSearches
+            page="parts"
+            filters={{ q, brand, cat }}
+            onApply={(f) => {
+              setQ(String(f.q ?? ""));
+              setBrand(String(f.brand ?? ""));
+              setCat((f.cat as string | null) ?? null);
+            }}
+          />
           <Loaded q={parts}>
             {(rows) =>
               rows.length === 0 ? (
@@ -93,11 +103,11 @@ function CategoryTree({ list, value, onChange }: { list: Category[]; value: stri
     <li key={c.id}>
       <div className="flex items-center" style={{ paddingLeft: depth * 14 }}>
         {depth === 0 && kids.has(c.id) ? (
-          <button className="icon-btn" style={{ minWidth: 22, height: 22 }} aria-label={open[c.id] ? `Collapse ${c.name}` : `Expand ${c.name}`} aria-expanded={!!open[c.id]} onClick={() => setOpen({ ...open, [c.id]: !open[c.id] })}>
+          <button className="icon-btn" style={{ minWidth: 24, height: 24 }} aria-label={open[c.id] ? `Collapse ${c.name}` : `Expand ${c.name}`} aria-expanded={!!open[c.id]} onClick={() => setOpen({ ...open, [c.id]: !open[c.id] })}>
             {open[c.id] ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
           </button>
         ) : (
-          <span style={{ width: 22 }} />
+          <span style={{ width: 24 }} />
         )}
         <button className={cx("btn ghost flex-1", value === c.id && "soft")} style={{ justifyContent: "space-between", minHeight: 28, padding: "2px 8px" }} aria-current={value === c.id} onClick={() => onChange(c.id)}>
           <span className="truncate">{c.name}</span>

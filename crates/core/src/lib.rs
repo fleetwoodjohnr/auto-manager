@@ -2,6 +2,7 @@
 //! directly with `cargo test`.
 
 pub mod aces_pies;
+pub mod attachments;
 pub mod backup;
 pub mod csvio;
 pub mod customers;

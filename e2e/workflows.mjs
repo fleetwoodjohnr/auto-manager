@@ -7,10 +7,10 @@
 //      reserve a part, and check the available stock went down.
 //   C  Research a component: Where Is It? in the vehicle's manual, the part's fitment, save it.
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { bodyText, choose, click, fill, invoke, launch, nav, stopDisplay, waitText } from "./harness.mjs";
+import { bodyText, choose, click, fill, invoke, launch, nav, root, stopDisplay, waitText } from "./harness.mjs";
 import { startFixtures } from "./fixture-server.mjs";
 
 const dataDir = mkdtempSync(path.join(tmpdir(), "am-flows-"));
@@ -219,6 +219,58 @@ try {
   assert.ok(detail.lines[0].explanation.steps.some((s) => s.includes("40% markup")));
   step("added to an estimate at $70.00 with the price explanation");
   console.log("Workflows A–D passed");
+
+  // Accessibility of the pages now full of data.
+  const AXE = readFileSync(path.join(root, "node_modules/axe-core/axe.min.js"), "utf8");
+  await b.execute(AXE);
+  const audit = async (where) => {
+    await b.pause(600);
+    const v = await b.execute(async () => {
+      const r = await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } });
+      return r.violations.map((x) => `${x.id}: ${x.help} (${x.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")})`);
+    });
+    assert.deepEqual(v, [], `${where}:\n${v.join("\n")}`);
+  };
+  await nav(b, "My Vehicles");
+  await click(b, "Recent lookups");
+  await click(b, "Sentra");
+  for (const tab of ["Overview", "Full Specifications", "Parts", "Manuals", "Maintenance", "Recalls & Safety", "Parts in Stock", "Service History"]) {
+    await click(b, tab, { exact: true });
+    await audit(`vehicle · ${tab}`);
+  }
+  await app.shot("E-recalls");
+  await nav(b, "Dashboard");
+  await click(b, "#1 Untitled");
+  await waitText(b, "Parts and labor");
+  await audit("job");
+  await app.shot("E-job");
+  step("vehicle tabs and job page pass the WCAG A/AA audit with data");
+
+  // Attachments. WebDriver can't drive the native file picker, so the file goes in through the call it feeds.
+  const photo = path.join(mkdtempSync(path.join(tmpdir(), "am-photo-")), "brake-pads.png");
+  writeFileSync(photo, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
+  await invoke(b, "attachment_add", { ownerKind: "job", ownerId: job.id, path: photo, caption: "Worn pads" });
+  await nav(b, "Inventory");
+  await b.pause(5500); // past the query cache's 5 s freshness, so the job page reloads its files
+  await nav(b, "Dashboard");
+  await click(b, "#1 Untitled");
+  await waitText(b, "brake-pads.png");
+  await b.waitUntil(() => b.execute(() => document.querySelector('img[alt="Worn pads"]')?.naturalWidth === 1), { timeout: 10000, timeoutMsg: "photo thumbnail didn't load" });
+  await click(b, "Remove brake-pads.png");
+  await b.waitUntil(async () => (await invoke(b, "attachment_list", { ownerKind: "job", ownerId: job.id })).length === 0, { timeout: 10000, timeoutMsg: "photo wasn't removed" });
+  step("photo attached to the job, shown as a thumbnail, and removed");
+
+  // Saved searches.
+  await nav(b, "Inventory");
+  await fill(b, "Search inventory", "BP-100");
+  await click(b, "Save this search");
+  await fill(b, "Saved search name", "Brake pads");
+  await click(b, "Save", { exact: true });
+  await waitText(b, "Search saved");
+  await fill(b, "Search inventory", "");
+  await click(b, "Brake pads", { exact: true });
+  await b.waitUntil(() => b.execute(() => document.querySelector('[aria-label="Search inventory"]').value === "BP-100"), { timeout: 10000, timeoutMsg: "the saved search didn't restore the filter" });
+  step("saved an inventory search and brought it back");
   fx2.close();
 } finally {
   await app.close();

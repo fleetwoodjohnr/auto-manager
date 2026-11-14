@@ -1,3 +1,4 @@
+import { Attachments } from "../shared/Attachments";
 import { useState } from "react";
 import { CheckCircle2, ClipboardCheck, PackageCheck, PackageX, Play, Plus, Printer, Receipt, Trash2, Undo2, XCircle } from "lucide-react";
 import { errorMessage } from "../../api/ipc";
@@ -208,6 +209,7 @@ export default function JobPage() {
                       Cost of parts {money(t.cost)} · gross profit {money(t.profit)}
                     </p>
                   </section>
+                  <Attachments ownerKind="job" ownerId={j.id} title="Photos, receipts and invoices" />
                   <section className="card">
                     <h2>Details</h2>
                     <dl className="kv">

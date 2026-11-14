@@ -1,3 +1,4 @@
+import { Attachments } from "../shared/Attachments";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Boxes, ListPlus, Pencil, Plus, ShieldQuestion, Trash2 } from "lucide-react";
@@ -139,6 +140,7 @@ export default function PartPage() {
                     )}
                   </section>
                   <Interchange partId={p.id} />
+                  <Attachments ownerKind="part" ownerId={p.id} title="Photos and diagrams" />
                 </div>
                 <div className="stack">
                   <FitCheck partId={p.id} />

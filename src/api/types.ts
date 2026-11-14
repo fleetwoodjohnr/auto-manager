@@ -5,6 +5,7 @@ export type { AcesSummary } from "./bindings/AcesSummary";
 export type { Adjust } from "./bindings/Adjust";
 export type { Annotation } from "./bindings/Annotation";
 export type { AnnotationInput } from "./bindings/AnnotationInput";
+export type { Attachment } from "./bindings/Attachment";
 export type { BackupInfo } from "./bindings/BackupInfo";
 export type { CacheStats } from "./bindings/CacheStats";
 export type { CanadaOptions } from "./bindings/CanadaOptions";

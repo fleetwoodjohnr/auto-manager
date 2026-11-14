@@ -9,6 +9,33 @@ fn fatal(what: &str, e: impl std::fmt::Display) -> ! {
     std::process::exit(1);
 }
 
+pub fn self_test() -> i32 {
+    let Some(dir) = std::env::var_os("AUTO_MANAGER_DATA_DIR") else {
+        eprintln!("self-test: set AUTO_MANAGER_DATA_DIR to a scratch folder");
+        return 2;
+    };
+    let result = Core::open(Paths::new(dir.into())).and_then(|core| {
+        core.read(|c| {
+            let ok: String = c.query_row("PRAGMA integrity_check", [], |r| r.get(0))?;
+            Ok((ok, auto_manager_core::db::user_version(c)?))
+        })
+    });
+    match result {
+        Ok((ok, v)) if ok == "ok" => {
+            println!("{{\"version\":\"{}\",\"schema\":{v},\"integrity\":\"ok\"}}", env!("CARGO_PKG_VERSION"));
+            0
+        }
+        Ok((ok, _)) => {
+            eprintln!("self-test: integrity check failed: {ok}");
+            1
+        }
+        Err(e) => {
+            eprintln!("self-test: {e}");
+            1
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {

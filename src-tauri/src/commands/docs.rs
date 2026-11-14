@@ -1,6 +1,6 @@
 use super::check_id;
 use auto_manager_core::manuals::{self, Annotation, AnnotationInput, Manual, ManualLink, ManualMeta, PageHit, WhereIsIt};
-use auto_manager_core::{AppResult, Core};
+use auto_manager_core::{AppResult, Core, attachments};
 use std::path::PathBuf;
 use tauri::State;
 use tauri::ipc::Response;
@@ -84,4 +84,49 @@ pub fn annotation_delete(core: State<'_, Core>, id: String) -> AppResult<()> {
 pub fn where_is(core: State<'_, Core>, vehicle_id: String, component: String) -> AppResult<WhereIsIt> {
     check_id(&vehicle_id)?;
     core.read(|c| manuals::where_is(c, &vehicle_id, &component))
+}
+
+#[tauri::command(async)]
+pub fn attachment_list(core: State<'_, Core>, owner_kind: String, owner_id: String) -> AppResult<Vec<attachments::Attachment>> {
+    check_id(&owner_id)?;
+    core.read(|c| attachments::list(c, &owner_kind, &owner_id))
+}
+
+#[tauri::command(async)]
+pub fn attachment_add(
+    core: State<'_, Core>,
+    owner_kind: String,
+    owner_id: String,
+    path: String,
+    caption: Option<String>,
+) -> AppResult<attachments::Attachment> {
+    check_id(&owner_id)?;
+    let paths = core.paths.clone();
+    core.tx(|c| attachments::add(c, &paths, &owner_kind, &owner_id, &PathBuf::from(&path), caption.as_deref().unwrap_or("")))
+}
+
+#[tauri::command(async)]
+pub fn attachment_bytes(core: State<'_, Core>, id: String) -> AppResult<Response> {
+    check_id(&id)?;
+    let paths = core.paths.clone();
+    Ok(Response::new(core.read(|c| attachments::bytes(c, &paths, &id))?))
+}
+
+/// Open a stored file in the system's own viewer (PDF reader, image viewer).
+#[tauri::command(async)]
+pub fn attachment_open(app: tauri::AppHandle, core: State<'_, Core>, id: String) -> AppResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    check_id(&id)?;
+    let paths = core.paths.clone();
+    let p = core.read(|c| attachments::path_of(c, &paths, &id))?;
+    app.opener()
+        .open_path(p.to_string_lossy(), None::<&str>)
+        .map_err(|e| auto_manager_core::AppError::Other(format!("Couldn't open the file: {e}")))
+}
+
+#[tauri::command(async)]
+pub fn attachment_delete(core: State<'_, Core>, id: String) -> AppResult<()> {
+    check_id(&id)?;
+    let paths = core.paths.clone();
+    core.tx(|c| attachments::delete(c, &paths, &id))
 }
