@@ -1,0 +1,36 @@
+[package]
+name = "auto-manager"
+description = "Automotive information, inventory and service management"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "auto_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+serde_json = "1"
+
+[dependencies]
+auto-manager-core.workspace = true
+auto-manager-obd.workspace = true
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
+# Only v2 updater artifacts are published; no legacy zip extraction.
+tauri-plugin-updater = { version = "2.14.1", default-features = false, features = ["rustls-tls", "system-proxy"] }
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
+semver = "1"
+url = "2"
+
+[lints]
+workspace = true

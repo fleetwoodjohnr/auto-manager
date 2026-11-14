@@ -1,0 +1,45 @@
+[package]
+name = "auto-manager-core"
+description = "Auto Manager domain logic: database, VIN decoding, fitment, inventory, pricing, providers."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+rust_decimal.workspace = true
+chrono.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+rusqlite = { version = "0.42", features = ["bundled"] }
+uuid = { version = "1", features = ["v7"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "query", "form"] }
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+sha2 = "0.11"
+csv = "1.4"
+quick-xml = "0.42"
+strsim = "0.11"
+regex = "1"
+ts-rs = { version = "12", features = ["serde-json-impl", "no-serde-warnings"] }
+rust_xlsxwriter = "0.102"
+calamine = "0.38"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+barcoders = { version = "2", features = ["svg"] }
+chacha20poly1305 = "0.10"
+argon2 = { version = "0.5", features = ["std"] }
+getrandom = "0.3"
+flate2 = "1"
+
+[dev-dependencies]
+rust_decimal_macros = "1.40"
+tempfile = "3"
+wiremock = "0.6"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[lints]
+workspace = true
