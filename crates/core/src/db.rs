@@ -10,6 +10,7 @@ pub const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/002_intelligence.sql"),
     include_str!("../migrations/003_business.sql"),
     include_str!("../migrations/004_advanced.sql"),
+    include_str!("../migrations/005_quantities_sync.sql"),
 ];
 
 pub fn schema_version() -> i64 {

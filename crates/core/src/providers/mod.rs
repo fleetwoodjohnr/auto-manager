@@ -4,6 +4,7 @@
 //!
 //! See docs/PROVIDERS.md for what each provider supplies and its terms.
 
+pub mod bulletins;
 pub mod canada;
 pub mod epa;
 pub mod http;
@@ -25,6 +26,8 @@ use ts_rs::TS;
 pub struct Endpoints {
     pub vpic: String,
     pub nhtsa: String,
+    /// Where NHTSA's public documents (bulletin PDFs) are served from.
+    pub nhtsa_static: String,
     pub fueleconomy: String,
 }
 
@@ -34,6 +37,7 @@ impl Endpoints {
         Endpoints {
             vpic: get("AUTO_MANAGER_VPIC_BASE", "https://vpic.nhtsa.dot.gov/api/vehicles"),
             nhtsa: get("AUTO_MANAGER_NHTSA_BASE", "https://api.nhtsa.gov"),
+            nhtsa_static: get("AUTO_MANAGER_NHTSA_STATIC_BASE", "https://static.nhtsa.gov"),
             fueleconomy: get("AUTO_MANAGER_FUELECONOMY_BASE", "https://www.fueleconomy.gov/ws/rest"),
         }
     }

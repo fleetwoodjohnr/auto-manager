@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CloudOff, ExternalLink, RefreshCw, ShieldAlert, Star } from "lucide-react";
+import { CloudOff, ExternalLink, FileText, RefreshCw, ShieldAlert, Star } from "lucide-react";
 import { call, errorMessage } from "../../api/ipc";
-import type { Ratings, Recall, Vehicle, VehicleRecalls } from "../../api/types";
+import type { Bulletin, BulletinDocument, Bulletins as BulletinList, Manual, Ratings, Recall, Vehicle, VehicleRecalls } from "../../api/types";
 import { toast } from "../../store";
 import { Badge, Empty, ErrorNote, ExtLink, Spinner } from "../../ui";
 import { date, dateTime } from "../../lib/format";
+import { indexManual } from "../../lib/pdf";
 
 const STATUS: Record<string, { label: string; tone: "bad" | "ok" | "neutral" }> = {
   outstanding: { label: "Outstanding for this VIN", tone: "bad" },
@@ -107,13 +108,7 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
           )}
         </>
       )}
-      <section className="card">
-        <h2>Technical service bulletins</h2>
-        <p className="small" style={{ margin: 0 }}>
-          NHTSA publishes manufacturers' service bulletins and other communications only as a bulk download, with no per-vehicle lookup Auto Manager can use, so they aren't listed here. Search them for this vehicle on{" "}
-          <ExtLink href="https://www.nhtsa.gov/recalls">nhtsa.gov</ExtLink> (choose the vehicle, then “Manufacturer Communications”). Bulletins you have as PDFs can be imported under Manuals with the type “Technical service bulletin”.
-        </p>
-      </section>
+      <Bulletins vehicle={vehicle} />
       <section className="card">
         <h2>
           <Star size={16} aria-hidden /> NHTSA 5-Star Safety Ratings
@@ -157,5 +152,99 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
         <p className="small muted mt-1">Ratings are for the model variant shown, not specifically this VIN.</p>
       </section>
     </div>
+  );
+}
+
+function BulletinDocs({ vehicle, b }: { vehicle: Vehicle; b: Bulletin }) {
+  const docs = useQuery<BulletinDocument[]>({ queryKey: ["bulletin_documents", b.nhtsa_id], queryFn: () => call("bulletin_documents", { nhtsaId: b.nhtsa_id }), retry: false });
+  const [busy, setBusy] = useState<string | null>(null);
+  const add = async (d: BulletinDocument) => {
+    setBusy(d.url);
+    try {
+      const m = await call<Manual>("bulletin_import", { vehicleId: vehicle.id, url: d.url, title: `${b.number || `NHTSA ${b.nhtsa_id}`}: ${b.title}` });
+      toast(`Added “${m.title}” to Manuals`);
+      void indexManual(m.id).catch(() => undefined);
+    } catch (e) {
+      toast(errorMessage(e), { tone: "bad" });
+    } finally {
+      setBusy(null);
+    }
+  };
+  if (docs.isPending) return <Spinner label="Loading documents" />;
+  if (docs.isError) return <ErrorNote error={docs.error} />;
+  if (docs.data.length === 0) return <p className="small muted">NHTSA has no document for this bulletin.</p>;
+  return (
+    <ul className="stack" style={{ gap: 4, margin: 0, paddingLeft: 0, listStyle: "none" }}>
+      {docs.data.map((d) => (
+        <li key={d.url} className="row small">
+          <FileText size={14} aria-hidden /> {d.description || d.file_name}
+          <ExtLink href={d.url}>
+            Open on NHTSA <ExternalLink size={12} aria-hidden />
+          </ExtLink>
+          <button className="btn ghost small" disabled={busy !== null} onClick={() => add(d)}>
+            {busy === d.url ? "Adding…" : "Add to library"}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Technical service bulletins and other manufacturer communications NHTSA lists for the model. */
+function Bulletins({ vehicle }: { vehicle: Vehicle }) {
+  const q = useQuery<BulletinList>({ queryKey: ["bulletins", vehicle.id], queryFn: () => call("bulletins_fetch", { vehicleId: vehicle.id }), retry: false });
+  const [filter, setFilter] = useState("");
+  const [all, setAll] = useState(false);
+  const [open, setOpen] = useState<number | null>(null);
+  const f = filter.trim().toLowerCase();
+  const list = (q.data?.bulletins ?? []).filter((b) => !f || `${b.number} ${b.title} ${b.components.join(" ")} ${b.summary}`.toLowerCase().includes(f));
+  const shown = all || f ? list : list.slice(0, 15);
+  return (
+    <section className="card stack" style={{ gap: 8 }}>
+      <h2>Technical service bulletins</h2>
+      <p className="small muted" style={{ margin: 0 }}>
+        Service bulletins and other communications manufacturers sent NHTSA for every {vehicle.year} {vehicle.make} {vehicle.model}. A bulletin may cover only some configurations, so check that it applies.
+      </p>
+      {q.isPending && <Spinner label="Loading bulletins" />}
+      {q.isError && <ErrorNote error={q.error} />}
+      {q.data && (
+        <>
+          <div className="spread">
+            <span className="small muted">
+              {q.data.bulletins.length} from NHTSA{q.data.freshness ? ` · ${q.data.freshness.stale ? "offline, saved" : "updated"} ${dateTime(q.data.freshness.fetched_at)}` : ""}
+            </span>
+            {q.data.bulletins.length > 0 && <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by number, component or words" aria-label="Filter bulletins" style={{ width: 260 }} />}
+          </div>
+          {q.data.bulletins.length === 0 ? (
+            <p className="muted">NHTSA lists no manufacturer communications for this model year, make and model.</p>
+          ) : (
+            <div className="stack" style={{ gap: 0 }}>
+              {shown.map((b) => (
+                <div key={b.nhtsa_id} style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
+                  <button className="btn ghost" style={{ width: "100%", justifyContent: "space-between", textAlign: "left", height: "auto", padding: "4px 0" }} aria-expanded={open === b.nhtsa_id} onClick={() => setOpen(open === b.nhtsa_id ? null : b.nhtsa_id)}>
+                    <span>
+                      <strong className="mono">{b.number || `NHTSA ${b.nhtsa_id}`}</strong> {b.title}
+                      <span className="small muted"> · {b.date ? date(b.date) : "undated"}{b.components.length ? ` · ${b.components.join(", ")}` : ""}</span>
+                    </span>
+                  </button>
+                  {open === b.nhtsa_id && (
+                    <div className="stack" style={{ gap: 6, paddingTop: 4 }}>
+                      <p className="small" style={{ margin: 0, whiteSpace: "pre-line" }}>{b.summary}</p>
+                      <BulletinDocs vehicle={vehicle} b={b} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {list.length > shown.length && (
+                <button className="btn ghost" style={{ alignSelf: "flex-start" }} onClick={() => setAll(true)}>
+                  Show all {list.length}
+                </button>
+              )}
+              {f && list.length === 0 && <p className="small muted">No bulletin matches “{filter}”.</p>}
+            </div>
+          )}
+        </>
+      )}
+    </section>
   );
 }

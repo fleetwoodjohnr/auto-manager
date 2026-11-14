@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { bodyText, choose, click, fill, invoke, launch, nav, root, stopDisplay, waitText } from "./harness.mjs";
+import { bodyText, choose, click, fill, invoke, launch, nav, root, stopDisplay, tinyPdf, waitText } from "./harness.mjs";
 import { startFixtures } from "./fixture-server.mjs";
 
 const dataDir = mkdtempSync(path.join(tmpdir(), "am-flows-"));
@@ -18,28 +18,6 @@ const fx = startFixtures();
 let app = await launch({ dataDir, env: fx.env });
 let b = app.browser;
 const step = (s) => console.log(`  • ${s}`);
-
-/** A one-page PDF whose text layer says `text` (enough for pdf.js and the search index). */
-function tinyPdf(file, text) {
-  const content = `BT /F1 14 Tf 72 720 Td (${text}) Tj ET`;
-  const objs = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-  ];
-  let out = "%PDF-1.4\n";
-  const offsets = [];
-  objs.forEach((o, i) => {
-    offsets.push(out.length);
-    out += `${i + 1} 0 obj\n${o}\nendobj\n`;
-  });
-  const xref = out.length;
-  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}`;
-  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  writeFileSync(file, out);
-}
 
 try {
   // ------------------------------------------------------------------ Workflow A
@@ -172,7 +150,7 @@ try {
   // ------------------------------------------------------------------ Workflow C
   console.log("Workflow C: research a component");
   const pdf = path.join(dataDir, "sentra-service.pdf");
-  tinyPdf(pdf, "Starter motor removal: the starter motor is below the intake manifold.");
+  writeFileSync(pdf, tinyPdf("Starter motor removal: the starter motor is below the intake manifold."));
   const vehicles = await invoke(b, "vehicle_recent", {});
   const sentra = vehicles.find((v) => v.model === "Sentra");
   const manual = await invoke(b, "manual_import", { path: pdf, meta: { title: "Sentra service manual", kind: "service", publisher: "", source_url: "", license_note: "" }, links: [{ vehicle_id: sentra.id }] });

@@ -3,7 +3,7 @@
 //!   AUTO_MANAGER_LIVE=1 cargo test -p auto-manager-core --test live -- --ignored --test-threads=1
 //! Recorded-response tests elsewhere prove the parsers; only these prove the integrations work.
 
-use auto_manager_core::providers::{canada, epa, recalls, safety, vpic};
+use auto_manager_core::providers::{bulletins, canada, epa, recalls, safety, vpic};
 use auto_manager_core::{Core, vehicles};
 
 fn core() -> Option<(Core, tempfile::TempDir)> {
@@ -50,4 +50,10 @@ async fn live_recalls_ratings_and_model_specs() {
     assert!(!e.options.is_empty());
     let (vals, _) = epa::vehicle(&core, &e.options[0].id).await.unwrap();
     assert!(vals.iter().any(|x| x.key == "mpg_combined"));
+    let b = bulletins::for_model(&core, 2019, "nissan", "sentra").await.unwrap();
+    assert!(b.bulletins.len() > 50, "NHTSA lists many communications for the 2019 Sentra");
+    let with_doc = b.bulletins.iter().find(|x| x.documents > 0).unwrap();
+    let docs = bulletins::documents(&core, with_doc.nhtsa_id).await.unwrap();
+    let pdf = bulletins::download(&core, &docs[0].url).await.unwrap();
+    assert!(pdf.starts_with(b"%PDF-"));
 }

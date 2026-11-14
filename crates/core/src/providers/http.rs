@@ -63,20 +63,25 @@ impl Http {
 
     /// GET a URL and return its body text. `who` names the provider in error messages.
     pub async fn get_text(&self, url: &str, who: &str) -> AppResult<String> {
+        text(self.request(url, None, None, who).await?, who)
+    }
+
+    /// GET a URL and return its body bytes (documents such as PDFs).
+    pub async fn get_bytes(&self, url: &str, who: &str) -> AppResult<Vec<u8>> {
         self.request(url, None, None, who).await
     }
 
     /// GET with an Accept header (some services pick JSON or XML from it).
     pub async fn get_accept(&self, url: &str, accept: &str, who: &str) -> AppResult<String> {
-        self.request(url, None, Some(accept), who).await
+        text(self.request(url, None, Some(accept), who).await?, who)
     }
 
     /// POST a form (application/x-www-form-urlencoded) and return the body text.
     pub async fn post_form(&self, url: &str, form: &[(&str, &str)], who: &str) -> AppResult<String> {
-        self.request(url, Some(form), None, who).await
+        text(self.request(url, Some(form), None, who).await?, who)
     }
 
-    async fn request(&self, url: &str, form: Option<&[(&str, &str)]>, accept: Option<&str>, who: &str) -> AppResult<String> {
+    async fn request(&self, url: &str, form: Option<&[(&str, &str)]>, accept: Option<&str>, who: &str) -> AppResult<Vec<u8>> {
         let parsed = reqwest::Url::parse(url).map_err(|e| AppError::Other(format!("Bad provider URL: {e}")))?;
         self.check_url(&parsed)?;
         let host = parsed.host_str().unwrap_or_default().to_string();
@@ -103,10 +108,7 @@ impl Http {
                                 offline: false,
                             });
                         }
-                        return String::from_utf8(bytes.to_vec()).map_err(|_| AppError::Provider {
-                            message: format!("{who} sent a response that isn't text."),
-                            offline: false,
-                        });
+                        return Ok(bytes.to_vec());
                     }
                     let retryable = status.as_u16() == 429 || status.is_server_error();
                     if !retryable || attempt >= ATTEMPTS {
@@ -141,6 +143,10 @@ impl Http {
         serde_json::from_str(&text)
             .map_err(|_| AppError::Provider { message: format!("{who} sent a response Auto Manager couldn't read."), offline: false })
     }
+}
+
+fn text(bytes: Vec<u8>, who: &str) -> AppResult<String> {
+    String::from_utf8(bytes).map_err(|_| AppError::Provider { message: format!("{who} sent a response that isn't text."), offline: false })
 }
 
 fn net_error(who: &str, e: &reqwest::Error) -> AppError {

@@ -7,6 +7,8 @@ use auto_manager_core::csvio::{self, FitmentPreview, ImportSummary};
 use auto_manager_core::dtc::{self, Dtc};
 use auto_manager_core::interchange::{self, Interchange};
 use auto_manager_core::maintenance::{self, DueItem, Interval, IntervalInput, Record, RecordInput};
+use auto_manager_core::manuals::{self, Manual, ManualLink, ManualMeta};
+use auto_manager_core::providers::bulletins;
 use auto_manager_core::providers::oem_docs::{self, OemLink};
 use auto_manager_core::providers::recalls::{self, RecallNotice, VehicleRecalls};
 use auto_manager_core::providers::safety::{self, Ratings};
@@ -235,4 +237,63 @@ pub fn import_pies(core: State<'_, Core>, path: String, category_id: Option<Stri
 #[tauri::command(async)]
 pub fn data_quality(core: State<'_, Core>) -> AppResult<Vec<IssueGroup>> {
     core.read(quality::report)
+}
+
+/// Manufacturer communications (service bulletins) NHTSA lists for the vehicle's model.
+#[tauri::command]
+pub async fn bulletins_fetch(core: State<'_, Core>, vehicle_id: String) -> AppResult<bulletins::Bulletins> {
+    check_id(&vehicle_id)?;
+    let Some((y, make, model)) = core.read(|c| recalls::vehicle_key(c, &vehicle_id))? else {
+        return Err(AppError::msg("Bulletins are listed by model year, make and model; add those to this vehicle first."));
+    };
+    bulletins::for_model(&core, y, &make, &model).await
+}
+
+#[tauri::command]
+pub async fn bulletin_documents(core: State<'_, Core>, nhtsa_id: i64) -> AppResult<Vec<bulletins::BulletinDocument>> {
+    bulletins::documents(&core, nhtsa_id).await
+}
+
+/// Download a bulletin PDF into the document library, linked to the vehicle's year, make and model.
+#[tauri::command]
+pub async fn bulletin_import(core: State<'_, Core>, vehicle_id: String, url: String, title: String) -> AppResult<Manual> {
+    check_id(&vehicle_id)?;
+    let Some((y, make, model)) = core.read(|c| recalls::vehicle_key(c, &vehicle_id))? else {
+        return Err(AppError::msg("Add the model year, make and model first."));
+    };
+    let bytes = bulletins::download(&core, &url).await?;
+    // Keep the bulletin's own file name (it's what the library shows); only safe characters.
+    let name: String =
+        url.rsplit('/').next().unwrap_or("").chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.')).collect();
+    let name = if name.ends_with(".pdf") && !name.starts_with('.') { name } else { "bulletin.pdf".into() };
+    let dir = core.paths.documents().join(auto_manager_core::db::new_id());
+    std::fs::create_dir_all(&dir)?;
+    let tmp = dir.join(name);
+    std::fs::write(&tmp, &bytes)?;
+    let paths = core.paths.clone();
+    let meta = ManualMeta {
+        title,
+        kind: "tsb".into(),
+        publisher: make.clone(),
+        source_url: url.clone(),
+        license_note: "Public record published by NHTSA".into(),
+    };
+    let result = core.tx(|c| {
+        let m = manuals::import(c, &paths, &tmp, &meta)?;
+        let mut links = m.links.clone();
+        let wanted = ManualLink {
+            vehicle_id: None,
+            vehicle_title: None,
+            make: Some(make.clone()),
+            model: Some(model.clone()),
+            year_from: Some(y),
+            year_to: Some(y),
+        };
+        if !links.iter().any(|l| l.make == wanted.make && l.model == wanted.model && l.year_from == wanted.year_from) {
+            links.push(wanted);
+        }
+        manuals::set_links(c, &m.id, &links)
+    });
+    let _ = std::fs::remove_dir_all(&dir);
+    result
 }
