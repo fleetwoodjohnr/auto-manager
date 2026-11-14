@@ -71,6 +71,7 @@ pub fn open(path: &Path, before_migrate: impl FnOnce(&Connection, i64) -> AppRes
     let mut conn = Connection::open(path)?;
     configure(&conn)?;
     migrate(&mut conn, before_migrate)?;
+    crate::folder_sync::install(&conn)?;
     Ok(conn)
 }
 
@@ -79,11 +80,21 @@ pub fn open_memory() -> AppResult<Connection> {
     let mut conn = Connection::open_in_memory()?;
     conn.pragma_update(None, "foreign_keys", true)?;
     migrate(&mut conn, |_, _| Ok(()))?;
+    crate::folder_sync::install(&conn)?;
     Ok(conn)
 }
 
 pub fn now_utc() -> String {
     chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()
+}
+
+/// An identifier derived from its inputs, so two computers doing the same thing (completing the
+/// same job line, say) create the same row instead of two.
+pub fn stable_id(parts: &[&str]) -> String {
+    use sha2::{Digest, Sha256};
+    let h = Sha256::digest(parts.join("\u{1f}").as_bytes());
+    let x: String = h.iter().take(16).map(|b| format!("{b:02x}")).collect();
+    format!("{}-{}-8{}-{}-{}", &x[0..8], &x[8..12], &x[13..16], &x[16..20], &x[20..32])
 }
 
 /// A new time-ordered identifier.

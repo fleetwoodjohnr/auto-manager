@@ -492,7 +492,23 @@ fn record(
     reason: &str,
     reverses: Option<&str>,
 ) -> AppResult<String> {
-    let id = db::new_id();
+    record_as(conn, db::new_id(), item, loc, kind, qty, unit_cost, group, reference, reason, reverses)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record_as(
+    conn: &Connection,
+    id: String,
+    item: &str,
+    loc: &str,
+    kind: &str,
+    qty: Qty,
+    unit_cost: Option<Decimal>,
+    group: Option<&str>,
+    reference: (&str, &str),
+    reason: &str,
+    reverses: Option<&str>,
+) -> AppResult<String> {
     conn.execute(
         "INSERT INTO inventory_movements (id, item_id, location_id, kind, qty, unit_cost, group_id, ref_kind, ref_id, reason, reverses_id, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, nullif(?8, ''), nullif(?9, ''), ?10, ?11, ?12)",
@@ -620,12 +636,17 @@ fn reference(c: &Change) -> (&str, &str) {
 
 /// Take stock out (sold over the counter, used, scrapped). Reserved stock can't be issued.
 pub fn issue(conn: &Connection, c: &Change) -> AppResult<String> {
+    issue_as(conn, db::new_id(), c)
+}
+
+/// `issue` with a given movement id (see `db::stable_id`).
+pub fn issue_as(conn: &Connection, id: String, c: &Change) -> AppResult<String> {
     let qty = amount(conn, &c.item_id, c.qty)?;
     location_kind(conn, &c.location_id)?;
     need_available(conn, &c.item_id, &c.location_id, qty)?;
     bump(conn, &c.item_id, &c.location_id, -qty, Qty::ZERO)?;
     let cost = get(conn, &c.item_id)?.avg_cost;
-    record(conn, &c.item_id, &c.location_id, "issue", -qty, Some(cost), None, reference(c), &c.reason, None)
+    record_as(conn, id, &c.item_id, &c.location_id, "issue", -qty, Some(cost), None, reference(c), &c.reason, None)
 }
 
 /// A customer brings a part back (qty > 0 into stock).
@@ -926,7 +947,9 @@ pub fn consume(conn: &Connection, id: &str) -> AppResult<String> {
     }
     bump(conn, &r.item_id, &r.location_id, -r.qty, -r.qty)?;
     let cost = get(conn, &r.item_id)?.avg_cost;
-    let m = record(conn, &r.item_id, &r.location_id, "consume", -r.qty, Some(cost), None, ("reservation", id), &r.note, None)?;
+    // The same id on every computer, so a job completed on two of them is deducted once.
+    let mid = db::stable_id(&["consume", id]);
+    let m = record_as(conn, mid, &r.item_id, &r.location_id, "consume", -r.qty, Some(cost), None, ("reservation", id), &r.note, None)?;
     conn.execute("UPDATE stock_reservations SET status = 'consumed', closed_at = ?2 WHERE id = ?1", params![id, db::now_utc()])?;
     Ok(m)
 }

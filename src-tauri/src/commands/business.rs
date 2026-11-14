@@ -3,6 +3,7 @@
 use super::check_id;
 use auto_manager_core::csvio;
 use auto_manager_core::diagnostics::{self, ObdReading, ObdSession};
+use auto_manager_core::folder_sync;
 use auto_manager_core::labels::{self, Label};
 use auto_manager_core::purchasing::{self, CostPoint, PoUpdate, PurchaseOrder, ReceiveLine, Suggestion, SupplierPrice, SupplierPriceInput};
 use auto_manager_core::reports::{self, Report, ReportInfo, ReportQuery};
@@ -235,4 +236,44 @@ pub async fn obd_scan(core: State<'_, Core>, port: String, vehicle_id: Option<St
 #[tauri::command(async)]
 pub fn obd_sessions(core: State<'_, Core>, vehicle_id: Option<String>) -> AppResult<Vec<ObdSession>> {
     core.read(|c| diagnostics::sessions(c, vehicle_id.as_deref()))
+}
+
+// ---------------------------------------------------------------- two-way sync through a folder
+
+#[tauri::command(async)]
+pub fn folder_sync_status(core: State<'_, Core>) -> AppResult<folder_sync::SyncStatus> {
+    Ok(folder_sync::status(&core.paths))
+}
+
+/// A name for this computer in other computers' sync lists.
+#[tauri::command(async)]
+pub fn folder_sync_default_name() -> String {
+    ["COMPUTERNAME", "HOSTNAME"]
+        .iter()
+        .find_map(|k| std::env::var(k).ok())
+        .or_else(|| std::fs::read_to_string("/etc/hostname").ok())
+        .map(|n| n.trim().to_string())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "This computer".into())
+}
+
+#[tauri::command(async)]
+pub fn folder_sync_setup(core: State<'_, Core>, folder: String, passphrase: String, device_name: String) -> AppResult<folder_sync::Report> {
+    folder_sync::setup(&core.paths, &PathBuf::from(folder), &passphrase, &device_name)?;
+    folder_sync::sync(&core)
+}
+
+#[tauri::command(async)]
+pub fn folder_sync_now(core: State<'_, Core>) -> AppResult<folder_sync::Report> {
+    folder_sync::sync(&core)
+}
+
+#[tauri::command(async)]
+pub fn folder_sync_set_auto(core: State<'_, Core>, auto: bool) -> AppResult<()> {
+    folder_sync::set_auto(&core.paths, auto)
+}
+
+#[tauri::command(async)]
+pub fn folder_sync_stop(core: State<'_, Core>) -> AppResult<()> {
+    folder_sync::stop(&core.paths)
 }

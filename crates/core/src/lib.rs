@@ -13,6 +13,7 @@ pub mod dtc;
 pub mod error;
 pub mod export;
 pub mod fitment;
+pub mod folder_sync;
 pub mod interchange;
 pub mod inventory;
 pub mod jobs;

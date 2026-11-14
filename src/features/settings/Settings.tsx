@@ -10,6 +10,7 @@ import { useApp, toast } from "../../store";
 import { Badge, ExtLink, Loaded, PageHead, ProgressBar, Spinner, Tabs, useConfirm } from "../../ui";
 import { bytes, dateTime, ago } from "../../lib/format";
 import { useUpdateStore } from "./updates";
+import { FolderSync } from "./FolderSync";
 
 const WIDGET_LABEL: Record<string, string> = {
   shortcuts: "Shortcuts",
@@ -488,6 +489,7 @@ function DataSettings({ s, save }: Props) {
           }
         </Loaded>
       </section>
+      <FolderSync />
       <SyncBundles busy={busy} run={run} />
       <section className="card">
         <h2>Export</h2>
@@ -663,7 +665,7 @@ function SyncBundles({ busy, run }: { busy: string | null; run: (what: string, f
     <section className="card">
       {dialog}
       <h2>Move to another computer</h2>
-      <p className="small muted">An encrypted bundle (a full backup locked with your passphrase) that you can carry on a USB stick or put in a synced folder, then open on another computer. It copies everything; it doesn't merge changes made on both computers.</p>
+      <p className="small muted">An encrypted bundle (a full backup locked with your passphrase) that you can carry on a USB stick or put in a synced folder, then open on another computer. It replaces everything on the other computer. To keep computers in step with each other, use Sync between computers above.</p>
       <div className="row">
         <button className="btn" onClick={() => setMode("export")}>
           Create encrypted bundle…

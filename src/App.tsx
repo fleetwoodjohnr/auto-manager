@@ -40,6 +40,7 @@ import Pricing from "./features/pricing/Pricing";
 import Reports from "./features/reports/Reports";
 import Settings from "./features/settings/Settings";
 import Customers from "./features/service/Customers";
+import { useAutoSync } from "./features/settings/FolderSync";
 import Suppliers from "./features/inventory/Suppliers";
 
 type NavItem = { page: Page; label: string; icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>; also?: Page[] };
@@ -84,6 +85,7 @@ export default function App() {
   const { settings, save } = useSettings();
   const info = useCmd<AppInfo>("app_info");
   const updates = useUpdates(info.data, settings);
+  useAutoSync();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(NAV_KEY) === "1";

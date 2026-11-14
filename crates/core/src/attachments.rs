@@ -51,7 +51,7 @@ fn ext(mime: &str) -> &'static str {
     }
 }
 
-fn stored_path(paths: &Paths, sha: &str, mime: &str) -> PathBuf {
+pub fn stored_path(paths: &Paths, sha: &str, mime: &str) -> PathBuf {
     paths.attachments().join(format!("{sha}.{}", ext(mime)))
 }
 

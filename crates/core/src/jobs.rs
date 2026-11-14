@@ -594,8 +594,9 @@ pub fn set_status(conn: &Connection, id: &str, to: &str) -> AppResult<JobDetail>
                                 l.description
                             ))
                         })?;
-                        inventory::issue(
+                        inventory::issue_as(
                             conn,
+                            db::stable_id(&["job-line", &l.id]),
                             &inventory::Change {
                                 item_id: item_id.clone(),
                                 location_id: loc,

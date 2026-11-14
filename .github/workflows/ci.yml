@@ -51,6 +51,7 @@ jobs:
       - run: npx tauri build --debug --no-bundle
       - run: node e2e/smoke.mjs
       - run: node e2e/workflows.mjs
+      - run: node e2e/sync.mjs
       - run: node e2e/a11y.mjs
       - uses: actions/upload-artifact@v4
         if: always()
