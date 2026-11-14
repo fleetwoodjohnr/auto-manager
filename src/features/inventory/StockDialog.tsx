@@ -4,17 +4,18 @@ import { useAction, useCmd } from "../../api/queries";
 import type { Item, Location, StockLevel } from "../../api/types";
 import { toast } from "../../store";
 import { Field, Modal } from "../../ui";
+import { t } from "../../i18n";
 
 export type StockOp = "receive" | "issue" | "transfer" | "adjust" | "damage" | "return_in" | "return_out";
 
 const META: Record<StockOp, { title: string; cmd: string; verb: string; help: string }> = {
-  receive: { title: "Receive stock", cmd: "stock_receive", verb: "Received", help: "Stock arriving from a supplier. The cost updates the item's average cost." },
-  issue: { title: "Issue stock", cmd: "stock_issue", verb: "Issued", help: "Stock leaving: sold over the counter, used, or scrapped. Reserved stock can't be issued." },
-  transfer: { title: "Move stock", cmd: "stock_transfer", verb: "Moved", help: "Move stock between locations." },
-  adjust: { title: "Adjust quantity", cmd: "stock_adjust", verb: "Adjusted", help: "Set the quantity at a location to what's actually there. The difference is recorded with your reason." },
-  damage: { title: "Mark damaged", cmd: "stock_damage", verb: "Marked damaged", help: "Moves stock to quarantine. It stays on record but can't be sold or reserved." },
-  return_in: { title: "Customer return", cmd: "stock_return_in", verb: "Returned", help: "A customer brought a part back in sellable condition. Faulty returns: receive, then mark damaged." },
-  return_out: { title: "Return to supplier", cmd: "stock_return_out", verb: "Returned to supplier", help: "Send stock back to the supplier." },
+  receive: { title: t("Receive stock"), cmd: "stock_receive", verb: "Received", help: t("Stock arriving from a supplier. The cost updates the item's average cost.") },
+  issue: { title: t("Issue stock"), cmd: "stock_issue", verb: "Issued", help: t("Stock leaving: sold over the counter, used, or scrapped. Reserved stock can't be issued.") },
+  transfer: { title: t("Move stock"), cmd: "stock_transfer", verb: "Moved", help: t("Move stock between locations.") },
+  adjust: { title: t("Adjust quantity"), cmd: "stock_adjust", verb: "Adjusted", help: t("Set the quantity at a location to what's actually there. The difference is recorded with your reason.") },
+  damage: { title: t("Mark damaged"), cmd: "stock_damage", verb: t("Marked damaged"), help: t("Moves stock to quarantine. It stays on record but can't be sold or reserved.") },
+  return_in: { title: t("Customer return"), cmd: "stock_return_in", verb: "Returned", help: t("A customer brought a part back in sellable condition. Faulty returns: receive, then mark damaged.") },
+  return_out: { title: t("Return to supplier"), cmd: "stock_return_out", verb: t("Returned to supplier"), help: t("Send stock back to the supplier.") },
 };
 
 /** One dialog for every stock movement. Each change can be undone from the toast. */
@@ -47,7 +48,7 @@ export function StockDialog({ op, item, levels, onClose }: { op: StockOp | null;
       if (!id) return null;
       return () =>
         void call("movement_reverse", { id })
-          .then(() => toast("Undone"))
+          .then(() => toast(t("Undone")))
           .catch((e) => toast(errorMessage(e), { tone: "bad" }));
     },
   });
@@ -75,9 +76,7 @@ export function StockDialog({ op, item, levels, onClose }: { op: StockOp | null;
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
           <button className="btn primary" onClick={submit} disabled={act.isPending || !loc || (op === "transfer" && !to)}>
             {m.title}
           </button>
@@ -86,23 +85,23 @@ export function StockDialog({ op, item, levels, onClose }: { op: StockOp | null;
     >
       <p className="muted">{m.help}</p>
       <div className="grid two">
-        <Field label={op === "transfer" ? "From" : "Location"} error={fe("location_id")}>
+        <Field label={op === "transfer" ? t("From") : t("Location")} error={fe("location_id")}>
           <select value={loc} onChange={(e) => setLoc(e.target.value)}>
             {sourceLocs.map((l) => {
               const lv = levels.find((x) => x.location_id === l.id);
               return (
                 <option key={l.id} value={l.id}>
                   {l.name}
-                  {lv ? ` (${lv.available} available${lv.reserved ? `, ${lv.reserved} reserved` : ""})` : ""}
+                  {lv ? t(" ({0} available{1})", lv.available, lv.reserved ? `, ${lv.reserved} reserved` : "") : ""}
                 </option>
               );
             })}
           </select>
         </Field>
         {op === "transfer" && (
-          <Field label="To" error={fe("to_location_id")}>
+          <Field label={t("To")} error={fe("to_location_id")}>
             <select value={to} onChange={(e) => setTo(e.target.value)}>
-              <option value="">Choose…</option>
+              <option value="">{t("Choose…")}</option>
               {warehouses
                 .filter((l) => l.id !== loc)
                 .map((l) => (
@@ -113,22 +112,22 @@ export function StockDialog({ op, item, levels, onClose }: { op: StockOp | null;
             </select>
           </Field>
         )}
-        <Field label={op === "adjust" ? "Quantity actually there" : "Quantity"} error={fe("qty")} hint={op === "adjust" && level ? `Recorded now: ${level.on_hand}` : undefined}>
+        <Field label={op === "adjust" ? t("Quantity actually there") : t("Quantity")} error={fe("qty")} hint={op === "adjust" && level ? t("Recorded now: {0}", level.on_hand) : undefined}>
           <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
         </Field>
         {op === "receive" && (
-          <Field label="Cost per unit" error={fe("unit_cost")}>
+          <Field label={t("Cost per unit")} error={fe("unit_cost")}>
             <input type="text" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} />
           </Field>
         )}
         {(op === "receive" || op === "transfer") && (
-          <Field label="Shelf / bin (optional)">
+          <Field label={t("Shelf / bin (optional)")}>
             <input type="text" value={bin} onChange={(e) => setBin(e.target.value)} />
           </Field>
         )}
       </div>
-      <Field label={op === "adjust" || op === "damage" ? "Reason" : "Note (optional)"} error={fe("reason")}>
-        <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={op === "damage" ? "e.g. Cracked housing" : op === "adjust" ? "e.g. Found two on the wrong shelf" : ""} />
+      <Field label={op === "adjust" || op === "damage" ? t("Reason") : t("Note (optional)")} error={fe("reason")}>
+        <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={op === "damage" ? t("e.g. Cracked housing") : op === "adjust" ? t("e.g. Found two on the wrong shelf") : ""} />
       </Field>
       {err != null && !errorField(err) && <div className="notice bad">{errorMessage(err)}</div>}
     </Modal>

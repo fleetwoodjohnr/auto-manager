@@ -7,6 +7,7 @@ import { Badge, Spinner } from "../../ui";
 import { dateTime } from "../../lib/format";
 import { vehicleTitle } from "../vehicles/Garage";
 import { TroubleCodes } from "./TroubleCodes";
+import { t, tx } from "../../i18n";
 
 /** Read-only OBD-II scan through an ELM327-compatible adapter. */
 export function ObdScanner() {
@@ -32,24 +33,21 @@ export function ObdScanner() {
   };
   return (
     <div className="stack">
-      <div className="notice info">
-        Connect an ELM327-compatible adapter (USB, or Bluetooth paired so it appears as a serial port), turn the ignition on, then scan. Auto Manager only <strong>reads</strong>: trouble codes, freeze-frame data, live values and the VIN. It never clears codes or sends
-        commands that change anything in the vehicle. Tested against a simulated adapter; results with real adapters vary by adapter and vehicle.
-      </div>
+      <div className="notice info">{t("Connect an ELM327-compatible adapter (USB, or Bluetooth paired so it appears as a serial port), turn the ignition on, then scan. Auto Manager only")}{" "}<strong>reads</strong>{t(": trouble codes, freeze-frame data, live values and the VIN. It never clears codes or sends commands that change anything in the vehicle. Tested against a simulated adapter; results with real adapters vary by adapter and vehicle.")}</div>
       <div className="row">
-        <select value={port} onChange={(e) => setPort(e.target.value)} aria-label="Adapter port">
-          <option value="">{ports.data?.length ? "Choose the adapter's port…" : "No serial ports found"}</option>
+        <select value={port} onChange={(e) => setPort(e.target.value)} aria-label={t("Adapter port")}>
+          <option value="">{ports.data?.length ? t("Choose the adapter's port…") : t("No serial ports found")}</option>
           {ports.data?.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
           ))}
         </select>
-        <button className="icon-btn" aria-label="Look for ports again" title="Look for ports again" onClick={() => ports.refetch()}>
+        <button className="icon-btn" aria-label={t("Look for ports again")} title={t("Look for ports again")} onClick={() => ports.refetch()}>
           <RefreshCw size={15} aria-hidden />
         </button>
-        <select value={vid} onChange={(e) => setVid(e.target.value)} aria-label="Vehicle">
-          <option value="">Vehicle (optional)</option>
+        <select value={vid} onChange={(e) => setVid(e.target.value)} aria-label={t("Vehicle")}>
+          <option value="">{t("Vehicle (optional)")}</option>
           {vehicles.data?.map((v) => (
             <option key={v.id} value={v.id}>
               {vehicleTitle(v)}
@@ -57,8 +55,7 @@ export function ObdScanner() {
           ))}
         </select>
         <button className="btn primary" disabled={!port || busy} onClick={scan}>
-          {busy ? <Spinner /> : <Cable size={16} aria-hidden />} Scan
-        </button>
+          {busy ? <Spinner /> : <Cable size={16} aria-hidden />}{" "}{t("Scan")}</button>
       </div>
       {error && <div className="notice bad">{error}</div>}
       {sessions.data?.map((s) => {
@@ -69,17 +66,15 @@ export function ObdScanner() {
             <div className="spread">
               <strong>{dateTime(s.started_at)}</strong>
               <span className="small muted">
-                {s.adapter} · {s.protocol} {s.vin_read && <>· VIN <span className="mono">{s.vin_read}</span></>}
+                {s.adapter} · {s.protocol} {s.vin_read && <>{t("· VIN")}{" "}<span className="mono">{s.vin_read}</span></>}
               </span>
             </div>
             <div className="row">
               {of("readiness").map((r) => (
-                <Badge key={r.code} tone={r.value === "on" ? "bad" : "ok"}>
-                  Check-engine lamp {r.value}
-                </Badge>
+                <Badge key={r.code} tone={r.value === "on" ? "bad" : "ok"}>{tx("Check-engine lamp {0}", r.value)}</Badge>
               ))}
               {codes.length === 0 ? (
-                <Badge tone="ok">No trouble codes</Badge>
+                <Badge tone="ok">{t("No trouble codes")}</Badge>
               ) : (
                 codes.map((c) => (
                   <button key={c.kind + c.code} className="btn" onClick={() => setCode(c.code)}>
@@ -102,7 +97,7 @@ export function ObdScanner() {
             )}
             {of("freeze_frame").length > 0 && (
               <details>
-                <summary>Freeze frame</summary>
+                <summary>{t("Freeze frame")}</summary>
                 <dl className="kv mt-1">
                   {of("freeze_frame").map((r) => (
                     <div key={r.code} style={{ display: "contents" }}>
@@ -121,10 +116,8 @@ export function ObdScanner() {
       {code && (
         <section className="card">
           <div className="spread">
-            <h2>Code {code}</h2>
-            <button className="btn link" onClick={() => setCode(null)}>
-              Close
-            </button>
+            <h2>{tx("Code {0}", code)}</h2>
+            <button className="btn link" onClick={() => setCode(null)}>{t("Close")}</button>
           </div>
           <TroubleCodes key={code} initial={code} />
         </section>

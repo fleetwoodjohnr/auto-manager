@@ -65,6 +65,15 @@ pub fn run() {
             let core = Core::open(paths).unwrap_or_else(|e| fatal("cannot open the database", e));
             app.manage(core);
             app.manage(commands::system::Updates::default());
+            // Text-recognition models for reading VINs from photos (bundled resources; in
+            // development, straight from src-tauri/resources).
+            let ocr = app.path().resource_dir().map(|d| d.join("ocr")).ok().filter(|d| d.join("text-recognition.onnx").exists());
+            auto_manager_core::scan::set_models_dir(
+                ocr.unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/ocr")),
+            );
+            if let Some(w) = app.get_webview_window("main") {
+                camera::enable(&w);
+            }
             Ok(())
         })
         .invoke_handler(include!(concat!(env!("OUT_DIR"), "/handlers.rs")))
@@ -73,3 +82,38 @@ pub fn run() {
 }
 
 struct LogGuard(#[allow(dead_code)] logging::WorkerGuard);
+
+/// Let the page use a camera for scanning VINs and barcodes. Windows (WebView2) and macOS
+/// (WKWebView, with NSCameraUsageDescription in Info.plist) ask the person themselves; WebKitGTK
+/// needs media capture switched on and its permission requests answered here: video only, never
+/// the microphone, and only for this app's own pages (the CSP allows nothing else to load).
+mod camera {
+    #[cfg(target_os = "linux")]
+    pub fn enable(w: &tauri::WebviewWindow) {
+        let _ = w.with_webview(|wv| {
+            use webkit2gtk::glib::object::Cast;
+            use webkit2gtk::{PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, UserMediaPermissionRequestExt, WebViewExt};
+            let view = wv.inner();
+            if let Some(settings) = WebViewExt::settings(&view) {
+                settings.set_enable_media_stream(true);
+                // End-to-end tests run without a camera; WebKit's mock device stands in for one.
+                if std::env::var_os("AUTO_MANAGER_MOCK_CAMERA").is_some() {
+                    settings.set_enable_mock_capture_devices(true);
+                }
+            }
+            view.connect_permission_request(|_, req| match req.downcast_ref::<UserMediaPermissionRequest>() {
+                Some(m) if m.is_for_video_device() && !m.is_for_audio_device() => {
+                    req.allow();
+                    true
+                }
+                _ => {
+                    req.deny();
+                    true
+                }
+            });
+        });
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn enable(_: &tauri::WebviewWindow) {}
+}

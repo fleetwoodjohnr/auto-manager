@@ -42,20 +42,21 @@ import Settings from "./features/settings/Settings";
 import Customers from "./features/service/Customers";
 import { useAutoSync } from "./features/settings/FolderSync";
 import Suppliers from "./features/inventory/Suppliers";
+import { t, tx } from "./i18n";
 
 type NavItem = { page: Page; label: string; icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>; also?: Page[] };
 
 const NAV: NavItem[] = [
-  { page: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { page: "lookup", label: "Vehicle Lookup", icon: ScanSearch },
-  { page: "vehicles", label: "My Vehicles", icon: Car, also: ["vehicle"] },
-  { page: "parts", label: "Parts Catalog", icon: Cog, also: ["part"] },
-  { page: "inventory", label: "Inventory", icon: Boxes, also: ["item", "suppliers"] },
-  { page: "manuals", label: "Manuals & Docs", icon: BookOpen, also: ["manual"] },
-  { page: "service", label: "Maintenance & Service", icon: Wrench, also: ["job", "customers", "print"] },
-  { page: "pricing", label: "Pricing & Estimates", icon: Calculator },
-  { page: "reports", label: "Reports", icon: BarChart3 },
-  { page: "settings", label: "Settings", icon: SettingsIcon },
+  { page: "dashboard", label: t("Dashboard"), icon: LayoutDashboard },
+  { page: "lookup", label: t("Vehicle Lookup"), icon: ScanSearch },
+  { page: "vehicles", label: t("My Vehicles"), icon: Car, also: ["vehicle"] },
+  { page: "parts", label: t("Parts Catalog"), icon: Cog, also: ["part"] },
+  { page: "inventory", label: t("Inventory"), icon: Boxes, also: ["item", "suppliers"] },
+  { page: "manuals", label: t("Manuals & Docs"), icon: BookOpen, also: ["manual"] },
+  { page: "service", label: t("Maintenance & Service"), icon: Wrench, also: ["job", "customers", "print"] },
+  { page: "pricing", label: t("Pricing & Estimates"), icon: Calculator },
+  { page: "reports", label: t("Reports"), icon: BarChart3 },
+  { page: "settings", label: t("Settings"), icon: SettingsIcon },
 ];
 const NAV_KEY = "auto-manager-nav-collapsed";
 
@@ -132,7 +133,7 @@ export default function App() {
     const Icon = n.icon;
     const key = `Alt+${i === 9 ? 0 : i + 1}`;
     return (
-      <button key={n.page} aria-current={place.page === n.page ? "page" : undefined} onClick={() => go(n.page)} title={collapsed ? n.label : undefined} data-key={key} aria-keyshortcuts={key}>
+      <button key={n.page} aria-current={place.page === n.page ? "page" : undefined} onClick={() => go(n.page)} title={n.label} data-key={key} aria-keyshortcuts={key}>
         <Icon size={18} aria-hidden />
         <span className="text">{n.label}</span>
       </button>
@@ -141,39 +142,36 @@ export default function App() {
 
   return (
     <div className="shell">
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
+      <a className="skip" href="#main">{t("Skip to content")}</a>
       <header className="titlebar">
         <span className="brand">
-          <Logo size={22} /> Auto Manager
-        </span>
+          <Logo size={22} />{" "}{t("Auto Manager")}</span>
         <span className="where">{place.label}</span>
         <GlobalSearch />
         <div className="tools">
           {updates.available && (
             <button className="pill" onClick={() => go({ page: "settings", tab: "updates" })}>
-              <ArrowUpCircle size={14} aria-hidden /> {updates.ready ? "Restart to update" : `Version ${updates.available.version} available`}
+              <ArrowUpCircle size={14} aria-hidden /> {updates.ready ? t("Restart to update") : t("Version {0} available", updates.available.version)}
             </button>
           )}
-          <button className="icon-btn" aria-label={dark ? "Use the light theme" : "Use the dark theme"} title={dark ? "Light theme" : "Dark theme"} onClick={() => save({ theme: dark ? "light" : "dark" })}>
+          <button className="icon-btn" aria-label={dark ? t("Use the light theme") : t("Use the dark theme")} title={dark ? t("Light theme") : t("Dark theme")} onClick={() => save({ theme: dark ? "light" : "dark" })}>
             {dark ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
           </button>
-          <button className="icon-btn" aria-label="Open settings" title="Settings" onClick={() => go("settings")}>
+          <button className="icon-btn" aria-label={t("Open settings")} title={t("Settings")} onClick={() => go("settings")}>
             <SettingsIcon size={16} aria-hidden />
           </button>
         </div>
       </header>
       <div className="body">
-        <nav className={`nav${collapsed ? " collapsed" : ""}`} aria-label="Main">
+        <nav className={`nav${collapsed ? " collapsed" : ""}`} aria-label={t("Main")}>
           {NAV.slice(0, -1).map(item)}
           <div className="nav-foot">
             {item(NAV[NAV.length - 1], NAV.length - 1)}
-            <button className="collapse" aria-expanded={!collapsed} onClick={toggleNav} title={collapsed ? "Show labels" : undefined}>
+            <button className="collapse" aria-expanded={!collapsed} onClick={toggleNav} title={collapsed ? t("Show labels") : undefined}>
               <PanelLeft size={18} aria-hidden />
-              <span className="text">{collapsed ? "Show labels" : "Hide labels"}</span>
+              <span className="text">{collapsed ? t("Show labels") : t("Hide labels")}</span>
             </button>
-            {info.data && <span className="version">Version {info.data.version}</span>}
+            {info.data && <span className="version">{tx("Version {0}", info.data.version)}</span>}
           </div>
         </nav>
         <main className="main" id="main" tabIndex={-1}>

@@ -4,6 +4,7 @@ import type { Customer, JobDetail } from "../../api/types";
 import { useApp } from "../../store";
 import { Loaded } from "../../ui";
 import { date, money, num } from "../../lib/format";
+import { t, tx } from "../../i18n";
 
 /** A printable estimate or invoice. "Save as PDF" / "Print to File" in the print dialog makes the PDF. */
 export default function PrintJob() {
@@ -13,13 +14,10 @@ export default function PrintJob() {
   return (
     <div className="page">
       <div className="row no-print mb-3">
-        <button className="btn" onClick={back}>
-          ← Back
-        </button>
+        <button className="btn" onClick={back}>{t("← Back")}</button>
         <button className="btn primary" onClick={() => window.print()}>
-          <Printer size={16} aria-hidden /> Print or save as PDF
-        </button>
-        <span className="small muted">To get a PDF, choose “Save as PDF” or “Print to File” as the printer.</span>
+          <Printer size={16} aria-hidden />{" "}{t("Print or save as PDF")}</button>
+        <span className="small muted">{t("To get a PDF, choose “Save as PDF” or “Print to File” as the printer.")}</span>
       </div>
       <Loaded q={q}>
         {(d) => {
@@ -48,21 +46,21 @@ export default function PrintJob() {
               </div>
               {(j.vehicle_title || j.mileage != null) && (
                 <p style={{ color: "#333" }}>
-                  <strong>Vehicle:</strong> {j.vehicle_title} {j.mileage != null && `· ${j.mileage.toLocaleString()} miles`}
+                  <strong>{t("Vehicle:")}</strong> {j.vehicle_title} {j.mileage != null && t("· {0} miles", j.mileage.toLocaleString())}
                 </p>
               )}
               {j.complaint && (
                 <p style={{ color: "#333", whiteSpace: "pre-wrap" }}>
-                  <strong>Request:</strong> {j.complaint}
+                  <strong>{t("Request:")}</strong> {j.complaint}
                 </p>
               )}
               <table>
                 <thead>
                   <tr>
-                    <th>Description</th>
-                    <th className="num">Qty</th>
-                    <th className="num">Price</th>
-                    <th className="num">Amount</th>
+                    <th>{t("Description")}</th>
+                    <th className="num">{t("Qty")}</th>
+                    <th className="num">{t("Price")}</th>
+                    <th className="num">{t("Amount")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -70,7 +68,7 @@ export default function PrintJob() {
                     <tr key={l.id}>
                       <td>
                         {l.description}
-                        {!l.taxable && <span style={{ color: "#666" }}> (not taxed)</span>}
+                        {!l.taxable && <span style={{ color: "#666" }}>{" "}{t("(not taxed)")}</span>}
                       </td>
                       <td className="num">{num(l.qty)}</td>
                       <td className="num">{money(l.unit_price)}</td>
@@ -80,32 +78,32 @@ export default function PrintJob() {
                 </tbody>
               </table>
               <dl className="kv" style={{ alignSelf: "flex-end", minWidth: 260, color: "#111" }}>
-                <dt>Parts</dt>
+                <dt>{t("Parts")}</dt>
                 <dd className="num">{money(d.totals.parts)}</dd>
-                <dt>Labor</dt>
+                <dt>{t("Labor")}</dt>
                 <dd className="num">{money(d.totals.labor)}</dd>
                 {Number(d.totals.fees) !== 0 && (
                   <>
-                    <dt>Fees</dt>
+                    <dt>{t("Fees")}</dt>
                     <dd className="num">{money(d.totals.fees)}</dd>
                   </>
                 )}
                 {Number(d.totals.discount) !== 0 && (
                   <>
-                    <dt>Discount</dt>
+                    <dt>{t("Discount")}</dt>
                     <dd className="num">−{money(d.totals.discount)}</dd>
                   </>
                 )}
-                <dt>Tax ({num(j.tax_rate_pct, 3)}%{j.prices_include_tax ? " included" : ""})</dt>
+                <dt>{tx("Tax ({0}%{1})", num(j.tax_rate_pct, 3), j.prices_include_tax ? t(" included") : "")}</dt>
                 <dd className="num">{money(d.totals.tax)}</dd>
                 <dt>
-                  <strong>Total</strong>
+                  <strong>{t("Total")}</strong>
                 </dt>
                 <dd className="num">
                   <strong>{money(d.totals.total)}</strong>
                 </dd>
               </dl>
-              {(j.status === "estimate" || j.status === "approved") && <p style={{ color: "#555", fontSize: 12 }}>This is an estimate. Prices may change if more work or parts are needed; we'll ask before going ahead.</p>}
+              {(j.status === "estimate" || j.status === "approved") && <p style={{ color: "#555", fontSize: 12 }}>{t("This is an estimate. Prices may change if more work or parts are needed; we'll ask before going ahead.")}</p>}
             </article>
           );
         }}

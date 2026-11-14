@@ -12,6 +12,7 @@ Migrations live in `crates/core/migrations/`, and `PRAGMA user_version` is the s
 - `002_intelligence.sql`: recalls and recall status, supersession, interchange, maintenance, trouble codes.
 - `003_business.sql`: supplier prices, purchase orders, saved searches.
 - `004_advanced.sql`: OBD sessions.
+- `005_quantities_sync.sql`: the service-bulletin source; quantities in thousandths of a unit (stock, movements, reservations, part lists, order lines, minimum and reorder levels) and `inventory_items.fractional`; the sync tables.
 
 How they run:
 
@@ -48,6 +49,9 @@ How they run:
 | `obd_sessions`, `obd_readings` | Stored scans |
 | `search_docs`, `search_index` (FTS5 trigram) | Global search, kept current by triggers |
 | `settings`, `audit_events`, `part_lists`, `part_list_items`, `attachments`, `saved_searches` | |
+| `sync_log`, `sync_clock`, `sync_aliases` | Two-way sync (device-local, never synced themselves): the version of every synced row or deletion, the hybrid logical clock and the trigger switch, and rows merged into another |
+
+**Quantities** are INTEGER thousandths of a unit (`4500` = 4.5), so the `CHECK`s and sums stay exact; the app shows and exports them in units (`crates/core/src/qty.rs`).
 
 ## Backups
 

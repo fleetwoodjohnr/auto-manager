@@ -3,6 +3,7 @@ import { Printer } from "lucide-react";
 import { call, errorMessage } from "../../api/ipc";
 import type { Item, Label } from "../../api/types";
 import { Modal, Spinner } from "../../ui";
+import { t } from "../../i18n";
 
 /** Printable shelf labels: name, SKU and a barcode (Code 128 or QR, per Settings) for each item. */
 export function Labels({ items, onClose }: { items: Item[]; onClose: () => void }) {
@@ -25,22 +26,19 @@ export function Labels({ items, onClose }: { items: Item[]; onClose: () => void 
     <Modal
       open
       wide
-      title={`Labels (${items.length})`}
+      title={t("Labels ({0})", items.length)}
       onClose={onClose}
       footer={
         <>
-          <label className="row small">
-            Copies of each
-            <input type="number" min={1} max={20} value={copies} onChange={(e) => setCopies(Math.max(1, Math.min(20, Number(e.target.value))))} style={{ width: 70 }} />
+          <label className="row small">{t("Copies of each")}<input type="number" min={1} max={20} value={copies} onChange={(e) => setCopies(Math.max(1, Math.min(20, Number(e.target.value))))} style={{ width: 70 }} />
           </label>
           <button className="btn primary" onClick={print} disabled={!labels}>
-            <Printer size={16} aria-hidden /> Print
-          </button>
+            <Printer size={16} aria-hidden />{" "}{t("Print")}</button>
         </>
       }
     >
       {error && <div className="notice bad">{error}</div>}
-      {!labels && !error && <Spinner label="Drawing labels" />}
+      {!labels && !error && <Spinner label={t("Drawing labels")} />}
       {labels && (
         <div className="label-sheet">
           {items.slice(0, 500).flatMap((it, i) =>
@@ -56,7 +54,7 @@ export function Labels({ items, onClose }: { items: Item[]; onClose: () => void 
           )}
         </div>
       )}
-      {items.length > 500 && <p className="small muted">Only the first 500 items are shown; filter the list to print the rest.</p>}
+      {items.length > 500 && <p className="small muted">{t("Only the first 500 items are shown; filter the list to print the rest.")}</p>}
     </Modal>
   );
 }

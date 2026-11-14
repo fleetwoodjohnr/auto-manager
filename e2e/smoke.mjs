@@ -26,7 +26,26 @@ try {
   await click(b, "Updates");
   await waitText(b, "Check for Updates");
   console.log("smoke: every page rendered in both themes");
+
+  // The other languages: every page renders, with its navigation translated.
+  const setLang = (l) => b.execute((x) => (localStorage.setItem("auto-manager.language", x), location.reload()), l);
+  for (const [lang, expect] of [["es", ["Panel", "Buscar vehículo", "Mis vehículos", "Configuración"]], ["fr", ["Tableau de bord", "Mes véhicules", "Paramètres"]]]) {
+    await setLang(lang);
+    await b.waitUntil(() => b.execute((l) => document.documentElement.lang === l && !!document.querySelector("nav button"), lang), { timeout: 20000 });
+    for (let i = 0; i < PAGES.length; i++) {
+      await b.execute((n) => document.querySelectorAll("nav")[0].querySelectorAll("button")[n].click(), i);
+      await b.pause(600);
+      const text = await bodyText(b);
+      assert.ok(!/Something went wrong|Unhandled|undefined|\[object Object\]|\{\d\}/.test(text), `${lang} page ${i + 1}: ${text.slice(0, 400)}`);
+      await app.shot(`${lang}-${String(i + 1).padStart(2, "0")}`);
+    }
+    const text = await bodyText(b);
+    for (const w of expect) assert.ok(text.includes(w), `${lang}: “${w}” missing`);
+  }
+  console.log("smoke: every page rendered in Spanish and French");
 } finally {
+  // The language is a per-computer preference kept by the web view; leave it in English.
+  await b.execute(() => localStorage.removeItem("auto-manager.language")).catch(() => {});
   await app.close();
   stopDisplay();
 }

@@ -6,6 +6,7 @@ import { useRefresh } from "../../api/queries";
 import type { Table } from "../../api/types";
 import { useApp } from "../../store";
 import { Badge, ErrorNote, Field, ProgressBar } from "../../ui";
+import { t, tx } from "../../i18n";
 
 interface BulkRow {
   vin: string;
@@ -55,7 +56,7 @@ export default function BulkDecode() {
       try {
         out.push(...(await call<BulkRow[]>("bulk_decode", { vins: vins.slice(i, i + CHUNK), save })));
       } catch (e) {
-        setError(`Stopped after ${i} VINs: ${errorMessage(e)}`);
+        setError(t("Stopped after {0} VINs: {1}", i, errorMessage(e)));
         break;
       }
       setRows([...out]);
@@ -67,40 +68,33 @@ export default function BulkDecode() {
   return (
     <div className="stack">
       <div className="card stack">
-        <p className="muted">Choose a CSV or Excel file with a column of VINs. Each VIN is decoded with NHTSA vPIC, 50 at a time.</p>
+        <p className="muted">{t("Choose a CSV or Excel file with a column of VINs. Each VIN is decoded with NHTSA vPIC, 50 at a time.")}</p>
         <div className="row">
           <button className="btn" onClick={pick}>
-            <FileSpreadsheet size={16} aria-hidden /> Choose file…
-          </button>
+            <FileSpreadsheet size={16} aria-hidden />{" "}{t("Choose file…")}</button>
           {table && (
             <>
-              <Field label="VIN column">
+              <Field label={t("VIN column")}>
                 <select value={col} onChange={(e) => setCol(Number(e.target.value))}>
                   {table.headers.map((h, i) => (
                     <option key={i} value={i}>
-                      {h || `Column ${i + 1}`}
+                      {h || t("Column {0}", i + 1)}
                     </option>
                   ))}
                 </select>
               </Field>
               <label className="check">
-                <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} /> Save decoded vehicles to My Vehicles
-              </label>
-              <button className="btn primary" disabled={!vins.length || (progress != null && progress.done < progress.total && !error)} onClick={run}>
-                Decode {vins.length} VIN{vins.length === 1 ? "" : "s"}
-              </button>
+                <input type="checkbox" checked={save} onChange={(e) => setSave(e.target.checked)} />{" "}{t("Save decoded vehicles to My Vehicles")}</label>
+              <button className="btn primary" disabled={!vins.length || (progress != null && progress.done < progress.total && !error)} onClick={run}>{tx("Decode {0} VIN{1}", vins.length, vins.length === 1 ? "" : "s")}</button>
             </>
           )}
         </div>
         {progress && (
           <div>
-            <ProgressBar value={progress.done} max={progress.total} label="Decoding progress" />
+            <ProgressBar value={progress.done} max={progress.total} label={t("Decoding progress")} />
             <div className="row small muted mt-1">
-              {progress.done} of {progress.total} · {count("decoded")} decoded · {count("not_identified")} not identified · {count("invalid")} invalid
-              {progress.done < progress.total && !error && (
-                <button className="btn link" onClick={() => (stop.current = true)}>
-                  Stop
-                </button>
+              {progress.done}{" "}{t("of")}{" "}{progress.total} · {count("decoded")}{" "}{t("decoded ·")}{" "}{count("not_identified")}{" "}{t("not identified ·")}{" "}{count("invalid")}{" "}{t("invalid")}{progress.done < progress.total && !error && (
+                <button className="btn link" onClick={() => (stop.current = true)}>{t("Stop")}</button>
               )}
             </div>
           </div>
@@ -112,10 +106,10 @@ export default function BulkDecode() {
           <table>
             <thead>
               <tr>
-                <th>VIN</th>
-                <th>Result</th>
-                <th>Vehicle</th>
-                <th>Note</th>
+                <th>{t("VIN")}</th>
+                <th>{t("Result")}</th>
+                <th>{t("Vehicle")}</th>
+                <th>{t("Note")}</th>
               </tr>
             </thead>
             <tbody>
@@ -123,7 +117,7 @@ export default function BulkDecode() {
                 <tr key={r.vin}>
                   <td className="mono">{r.vin}</td>
                   <td>
-                    <Badge tone={r.status === "decoded" ? "ok" : r.status === "invalid" ? "bad" : "warn"}>{r.status === "decoded" ? "Decoded" : r.status === "invalid" ? "Invalid" : "Not identified"}</Badge>
+                    <Badge tone={r.status === "decoded" ? "ok" : r.status === "invalid" ? "bad" : "warn"}>{r.status === "decoded" ? t("Decoded") : r.status === "invalid" ? t("Invalid") : t("Not identified")}</Badge>
                   </td>
                   <td>
                     {r.vehicle_id ? (

@@ -6,6 +6,7 @@ import { useApp } from "../../store";
 import { useSettings } from "../../settings";
 import { showValue, type UnitSystem } from "../../lib/units";
 import { SourceChip } from "./Specs";
+import { t, tx } from "../../i18n";
 
 export default function Overview({ d }: { d: VehicleDetail }) {
   const { go, setTab } = useApp();
@@ -23,34 +24,32 @@ export default function Overview({ d }: { d: VehicleDetail }) {
   return (
     <div className="grid two">
       <section className="card">
-        <h2>Key specifications</h2>
+        <h2>{t("Key specifications")}</h2>
         <div className="specs">
           {essential.map((f) => {
             const s = eff.get(f.key);
             return (
               <div key={f.key} style={{ display: "contents" }}>
                 <div className="k">{f.label}</div>
-                <div className="v">{s ? showValue(s.value, s.unit ?? f.unit, system) : <span className="missing">Not available</span>}</div>
+                <div className="v">{s ? showValue(s.value, s.unit ?? f.unit, system) : <span className="missing">{t("Not available")}</span>}</div>
                 <div className="s">{s && <SourceChip s={s} />}</div>
               </div>
             );
           })}
         </div>
-        <button className="btn link mt-2" style={{ paddingLeft: 0 }} onClick={() => setTab("specs")}>
-          All specifications →
-        </button>
+        <button className="btn link mt-2" style={{ paddingLeft: 0 }} onClick={() => setTab("specs")}>{t("All specifications →")}</button>
       </section>
       <div className="stack">
         <section className="card">
-          <h2>At a glance</h2>
+          <h2>{t("At a glance")}</h2>
           <div className="starts">
             <button className="start" onClick={() => setTab("stock")}>
               <span className="icon-chip">
                 <Boxes size={18} />
               </span>
               <span>
-                <strong>{fitting ?? "…"} parts in stock</strong>
-                <span>with fitment records for this vehicle</span>
+                <strong>{tx("{0} parts in stock", fitting ?? "…")}</strong>
+                <span>{t("with fitment records for this vehicle")}</span>
               </span>
             </button>
             <button className="start" onClick={() => setTab("manuals")}>
@@ -58,8 +57,8 @@ export default function Overview({ d }: { d: VehicleDetail }) {
                 <BookOpen size={18} />
               </span>
               <span>
-                <strong>{manuals.data?.length ?? "…"} documents</strong>
-                <span>manuals and references</span>
+                <strong>{tx("{0} documents", manuals.data?.length ?? "…")}</strong>
+                <span>{t("manuals and references")}</span>
               </span>
             </button>
             <button className="start" onClick={() => setTab("service")}>
@@ -67,8 +66,8 @@ export default function Overview({ d }: { d: VehicleDetail }) {
                 <Wrench size={18} />
               </span>
               <span>
-                <strong>{jobs.data?.length ?? "…"} jobs</strong>
-                <span>estimates and service history</span>
+                <strong>{tx("{0} jobs", jobs.data?.length ?? "…")}</strong>
+                <span>{t("estimates and service history")}</span>
               </span>
             </button>
           </div>
@@ -78,26 +77,24 @@ export default function Overview({ d }: { d: VehicleDetail }) {
             <div className="flex gap-2">
               <Info size={16} aria-hidden className="flex-none mt-0.5" />
               <div>
-                <strong>Details that help parts matching are missing:</strong> {missingFitment.map((f) => f.label.toLowerCase()).join(", ")}. Without them, some parts can only be shown as a conditional fit.{" "}
-                <button className="btn link" style={{ padding: 0 }} onClick={() => setTab("specs")}>
-                  Add them
-                </button>
+                <strong>{t("Details that help parts matching are missing:")}</strong> {missingFitment.map((f) => f.label.toLowerCase()).join(", ")}{t(". Without them, some parts can only be shown as a conditional fit.")}{" "}
+                <button className="btn link" style={{ padding: 0 }} onClick={() => setTab("specs")}>{t("Add them")}</button>
               </div>
             </div>
           </section>
         )}
         {v.decode_note && !v.decode_note.startsWith("0 -") && (
           <section className="notice warn">
-            <strong>NHTSA's note on this VIN:</strong> {v.decode_note}
+            <strong>{t("NHTSA's note on this VIN:")}</strong> {v.decode_note}
           </section>
         )}
         {(v.notes || v.mileage != null || v.plate || v.color) && (
           <section className="card">
-            <h2>Your details</h2>
+            <h2>{t("Your details")}</h2>
             <dl className="kv">
               {v.mileage != null && (
                 <>
-                  <dt>Mileage</dt>
+                  <dt>{t("Mileage")}</dt>
                   <dd>
                     {v.mileage.toLocaleString()} {v.mileage_unit}
                   </dd>
@@ -105,30 +102,28 @@ export default function Overview({ d }: { d: VehicleDetail }) {
               )}
               {v.plate && (
                 <>
-                  <dt>Plate</dt>
+                  <dt>{t("Plate")}</dt>
                   <dd>{v.plate}</dd>
                 </>
               )}
               {v.color && (
                 <>
-                  <dt>Colour</dt>
+                  <dt>{t("Colour")}</dt>
                   <dd>{v.color}</dd>
                 </>
               )}
               {v.notes && (
                 <>
-                  <dt>Notes</dt>
+                  <dt>{t("Notes")}</dt>
                   <dd style={{ whiteSpace: "pre-wrap" }}>{v.notes}</dd>
                 </>
               )}
             </dl>
           </section>
         )}
-        <Attachments ownerKind="vehicle" ownerId={v.id} title="Photos and documents" />
+        <Attachments ownerKind="vehicle" ownerId={v.id} title={t("Photos and documents")} />
         {v.customer_id && (
-          <button className="btn" onClick={() => go({ page: "customers", id: v.customer_id! })}>
-            Open owner record
-          </button>
+          <button className="btn" onClick={() => go({ page: "customers", id: v.customer_id! })}>{t("Open owner record")}</button>
         )}
       </div>
     </div>

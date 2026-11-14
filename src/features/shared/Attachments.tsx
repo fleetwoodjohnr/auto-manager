@@ -6,6 +6,7 @@ import { useAction, useCmd } from "../../api/queries";
 import type { Attachment } from "../../api/types";
 import { toast } from "../../store";
 import { bytes as size } from "../../lib/format";
+import { t } from "../../i18n";
 
 function Thumb({ a }: { a: Attachment }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -23,11 +24,11 @@ function Thumb({ a }: { a: Attachment }) {
 }
 
 /** Photos and PDF documents (receipts, invoices, references) attached to a record. */
-export function Attachments({ ownerKind, ownerId, title = "Photos and files" }: { ownerKind: string; ownerId: string; title?: string }) {
+export function Attachments({ ownerKind, ownerId, title = t("Photos and files") }: { ownerKind: string; ownerId: string; title?: string }) {
   const q = useCmd<Attachment[]>("attachment_list", { ownerKind, ownerId });
   const del = useAction<{ id: string }>("attachment_delete", { invalidate: ["attachment_list"] });
   const add = async () => {
-    const picked = await open({ multiple: true, filters: [{ name: "Photos and PDFs", extensions: ["png", "jpg", "jpeg", "webp", "pdf"] }] });
+    const picked = await open({ multiple: true, filters: [{ name: t("Photos and PDFs"), extensions: ["png", "jpg", "jpeg", "webp", "pdf"] }] });
     const paths = Array.isArray(picked) ? picked : picked ? [picked] : [];
     for (const path of paths) {
       try {
@@ -45,31 +46,27 @@ export function Attachments({ ownerKind, ownerId, title = "Photos and files" }: 
         <h2>
           <Paperclip size={16} aria-hidden /> {title}
         </h2>
-        <button className="btn" onClick={add}>
-          Attach…
-        </button>
+        <button className="btn" onClick={add}>{t("Attach…")}</button>
       </div>
       {list.length === 0 ? (
-        <p className="small muted">Photos (PNG, JPEG, WebP) and PDFs such as receipts or invoices.</p>
+        <p className="small muted">{t("Photos (PNG, JPEG, WebP) and PDFs such as receipts or invoices.")}</p>
       ) : (
         <div className="row" style={{ alignItems: "flex-start" }}>
           {list.map((a) => (
             <figure key={a.id} className="stack" style={{ gap: 4, margin: 0, width: 120 }}>
               {a.mime.startsWith("image/") ? (
-                <button className="btn ghost" style={{ padding: 0, minHeight: 0 }} onClick={() => call("attachment_open", { id: a.id }).catch((e) => toast(errorMessage(e), { tone: "bad" }))} aria-label={`Open ${a.file_name}`}>
+                <button className="btn ghost" style={{ padding: 0, minHeight: 0 }} onClick={() => call("attachment_open", { id: a.id }).catch((e) => toast(errorMessage(e), { tone: "bad" }))} aria-label={t("Open {0}", a.file_name)}>
                   <Thumb a={a} />
                 </button>
               ) : (
-                <button className="btn" style={{ width: 120, height: 90, flexDirection: "column" }} onClick={() => call("attachment_open", { id: a.id }).catch((e) => toast(errorMessage(e), { tone: "bad" }))} aria-label={`Open ${a.file_name}`}>
-                  <FileText size={22} aria-hidden /> PDF
-                </button>
+                <button className="btn" style={{ width: 120, height: 90, flexDirection: "column" }} onClick={() => call("attachment_open", { id: a.id }).catch((e) => toast(errorMessage(e), { tone: "bad" }))} aria-label={t("Open {0}", a.file_name)}>
+                  <FileText size={22} aria-hidden />{" "}{t("PDF")}</button>
               )}
               <figcaption className="small muted truncate" title={a.file_name}>
                 {a.file_name} · {size(a.size)}
               </figcaption>
-              <button className="btn link small" style={{ padding: 0, alignSelf: "flex-start" }} onClick={() => del.mutate({ id: a.id })} aria-label={`Remove ${a.file_name}`}>
-                <Trash2 size={12} aria-hidden /> Remove
-              </button>
+              <button className="btn link small" style={{ padding: 0, alignSelf: "flex-start" }} onClick={() => del.mutate({ id: a.id })} aria-label={t("Remove {0}", a.file_name)}>
+                <Trash2 size={12} aria-hidden />{" "}{t("Remove")}</button>
             </figure>
           ))}
         </div>

@@ -11,18 +11,19 @@ import { Badge, ExtLink, Loaded, PageHead, ProgressBar, Spinner, Tabs, useConfir
 import { bytes, dateTime, ago } from "../../lib/format";
 import { useUpdateStore } from "./updates";
 import { FolderSync } from "./FolderSync";
+import { t, tx, lang, LANGUAGES, setLanguage, type Lang } from "../../i18n";
 
 const WIDGET_LABEL: Record<string, string> = {
   shortcuts: "Shortcuts",
-  recent_vehicles: "Recently searched vehicles",
-  garage: "Saved vehicles",
-  inventory: "Inventory value and counts",
-  low_stock: "Low stock and restocking",
-  jobs: "Open service jobs",
-  maintenance: "Upcoming maintenance",
-  recalls: "Recall notices",
-  activity: "Recent inventory activity",
-  updates: "Application and data status",
+  recent_vehicles: t("Recently searched vehicles"),
+  garage: t("Saved vehicles"),
+  inventory: t("Inventory value and counts"),
+  low_stock: t("Low stock and restocking"),
+  jobs: t("Open service jobs"),
+  maintenance: t("Upcoming maintenance"),
+  recalls: t("Recall notices"),
+  activity: t("Recent inventory activity"),
+  updates: t("Application and data status"),
 };
 
 function Setting({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
@@ -61,18 +62,18 @@ export default function Settings() {
   const tab = route.tab ?? "general";
   return (
     <div className="page settings">
-      <PageHead title="Settings" sub="Saved as you change them." />
+      <PageHead title={t("Settings")} sub={t("Saved as you change them.")} />
       <Tabs
-        label="Settings sections"
+        label={t("Settings sections")}
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: "general", label: "General" },
-          { id: "data_sources", label: "Vehicle data" },
-          { id: "inventory", label: "Inventory" },
-          { id: "pricing", label: "Pricing" },
-          { id: "data", label: "Data and backups" },
-          { id: "updates", label: "Updates" },
+          { id: "general", label: t("General") },
+          { id: "data_sources", label: t("Vehicle data") },
+          { id: "inventory", label: t("Inventory") },
+          { id: "pricing", label: t("Pricing") },
+          { id: "data", label: t("Data and backups") },
+          { id: "updates", label: t("Updates") },
         ]}
       />
       {settings ? (
@@ -85,7 +86,7 @@ export default function Settings() {
           {tab === "updates" && <Updates s={settings} save={save} />}
         </>
       ) : (
-        <Spinner label="Loading settings" />
+        <Spinner label={t("Loading settings")} />
       )}
     </div>
   );
@@ -97,71 +98,77 @@ function General({ s, save }: Props) {
   return (
     <div className="stack">
       <section className="card">
-        <h2>Appearance</h2>
-        <Setting label="Theme">
+        <h2>{t("Appearance")}</h2>
+        <Setting label={t("Theme")}>
           <Segmented
-            name="Theme"
+            name={t("Theme")}
             value={s.theme as "system" | "light" | "dark"}
             onChange={(theme) => save({ theme })}
             options={[
-              { v: "system", label: "System", icon: <Monitor size={14} aria-hidden /> },
-              { v: "light", label: "Light", icon: <Sun size={14} aria-hidden /> },
-              { v: "dark", label: "Dark", icon: <Moon size={14} aria-hidden /> },
+              { v: "system", label: t("System"), icon: <Monitor size={14} aria-hidden /> },
+              { v: "light", label: t("Light"), icon: <Sun size={14} aria-hidden /> },
+              { v: "dark", label: t("Dark"), icon: <Moon size={14} aria-hidden /> },
             ]}
           />
         </Setting>
-        <Setting label="Start on" hint="The page Auto Manager opens to.">
-          <select value={s.landing_page} onChange={(e) => save({ landing_page: e.target.value })} aria-label="Start page">
-            <option value="dashboard">Dashboard</option>
-            <option value="lookup">Vehicle Lookup</option>
-            <option value="vehicles">My Vehicles</option>
-            <option value="parts">Parts Catalog</option>
-            <option value="inventory">Inventory</option>
-            <option value="service">Maintenance &amp; Service</option>
+        <Setting label={t("Start on")} hint={t("The page Auto Manager opens to.")}>
+          <select value={s.landing_page} onChange={(e) => save({ landing_page: e.target.value })} aria-label={t("Start page")}>
+            <option value="dashboard">{t("Dashboard")}</option>
+            <option value="lookup">{t("Vehicle Lookup")}</option>
+            <option value="vehicles">{t("My Vehicles")}</option>
+            <option value="parts">{t("Parts Catalog")}</option>
+            <option value="inventory">{t("Inventory")}</option>
+            <option value="service">{t("Maintenance &amp; Service")}</option>
           </select>
         </Setting>
       </section>
       <section className="card">
-        <h2>Formats</h2>
-        <Setting label="Measurement units" hint="Specifications keep the units their source gave; this only changes how they're shown.">
+        <h2>{t("Formats")}</h2>
+        <Setting label={t("Measurement units")} hint={t("Specifications keep the units their source gave; this only changes how they're shown.")}>
           <Segmented
-            name="Units"
+            name={t("Units")}
             value={s.units as "imperial" | "metric"}
             onChange={(units) => save({ units })}
             options={[
-              { v: "imperial", label: "Miles, lb, gal" },
-              { v: "metric", label: "Km, kg, litres" },
+              { v: "imperial", label: t("Miles, lb, gal") },
+              { v: "metric", label: t("Km, kg, litres") },
             ]}
           />
         </Setting>
-        <Setting label="Date format">
-          <select value={s.date_format} onChange={(e) => save({ date_format: e.target.value })} aria-label="Date format">
-            <option value="system">As this computer</option>
+        <Setting label={t("Date format")}>
+          <select value={s.date_format} onChange={(e) => save({ date_format: e.target.value })} aria-label={t("Date format")}>
+            <option value="system">{t("As this computer")}</option>
             <option value="iso">2026-11-14</option>
             <option value="us">11/14/2026</option>
             <option value="eu">14/11/2026</option>
           </select>
         </Setting>
-        <Setting label="Currency" hint="Three-letter code, e.g. USD, CAD, EUR, GBP. All amounts are in this one currency.">
+        <Setting label={t("Currency")} hint={t("Three-letter code, e.g. USD, CAD, EUR, GBP. All amounts are in this one currency.")}>
           <input
             type="text"
             defaultValue={s.currency}
             maxLength={3}
             style={{ width: 80, textTransform: "uppercase" }}
-            aria-label="Currency code"
+            aria-label={t("Currency code")}
             onBlur={(e) => {
               const c = e.target.value.trim().toUpperCase();
               if (c !== s.currency) save({ currency: c });
             }}
           />
         </Setting>
-        <Setting label="Language" hint="English only for now; other languages need translations first.">
-          <span className="muted">English</span>
+        <Setting label={t("Language")} hint={t("The app restarts its window in the chosen language. Data from NHTSA and the EPA stays in English, as published.")}>
+          <select value={lang} onChange={(e) => setLanguage(e.target.value as Lang)} aria-label={t("Language")}>
+            {LANGUAGES.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
         </Setting>
       </section>
       <section className="card">
-        <h2>Dashboard</h2>
-        <p className="small muted">Choose what the dashboard shows. Hidden sections can be turned back on here.</p>
+        <h2>{t("Dashboard")}</h2>
+        <p className="small muted">{t("Choose what the dashboard shows. Hidden sections can be turned back on here.")}</p>
         <div className="toggles">
           {Object.entries(WIDGET_LABEL).map(([id, label]) => (
             <label className="toggle" key={id}>
@@ -183,27 +190,24 @@ function DataSources({ s, save }: Props) {
   const sources = useCmd<Source[]>("data_sources");
   const cache = useCmd<CacheStats>("cache_stats");
   const refresh = useRefresh();
-  const setPriority = useAction<{ id: string; priority: number }>("data_source_priority", { invalidate: ["data_sources", "vehicle_detail"], success: "Priority saved" });
+  const setPriority = useAction<{ id: string; priority: number }>("data_source_priority", { invalidate: ["data_sources", "vehicle_detail"], success: t("Priority saved") });
   const clear = useAction("cache_clear", { invalidate: ["cache_stats"], success: (n) => `Removed ${n} saved answers` });
   return (
     <div className="stack">
       <section className="card">
-        <h2>Data providers</h2>
-        <p className="small muted">
-          When two sources disagree about a value, the one with the lower priority number is shown and the disagreement is flagged. Your own entries always come first. None of the
-          built-in providers needs an account or an API key.
-        </p>
+        <h2>{t("Data providers")}</h2>
+        <p className="small muted">{t("When two sources disagree about a value, the one with the lower priority number is shown and the disagreement is flagged. Your own entries always come first. None of the built-in providers needs an account or an API key.")}</p>
         <Loaded q={sources}>
           {(list) => (
             <div className="table-wrap" style={{ maxHeight: "none" }}>
               <table>
                 <thead>
                   <tr>
-                    <th>Source</th>
-                    <th>Type</th>
-                    <th>Records</th>
-                    <th>Terms</th>
-                    <th>Priority</th>
+                    <th>{t("Source")}</th>
+                    <th>{t("Type")}</th>
+                    <th>{t("Records")}</th>
+                    <th>{t("Terms")}</th>
+                    <th>{t("Priority")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -214,13 +218,13 @@ function DataSources({ s, save }: Props) {
                         {d.url && <div className="small muted">{d.url}</div>}
                       </td>
                       <td>
-                        <Badge tone={d.kind === "provider" ? "info" : d.kind === "user" ? "ok" : "neutral"}>{d.kind === "provider" ? "Online provider" : d.kind === "user" ? "You" : "Import"}</Badge>
+                        <Badge tone={d.kind === "provider" ? "info" : d.kind === "user" ? "ok" : "neutral"}>{d.kind === "provider" ? t("Online provider") : d.kind === "user" ? t("You") : t("Import")}</Badge>
                       </td>
                       <td>{d.records}</td>
                       <td className="small">{d.license ?? "—"}</td>
                       <td>
                         {d.id === "user" ? (
-                          <span className="muted">Always first</span>
+                          <span className="muted">{t("Always first")}</span>
                         ) : (
                           <input
                             type="number"
@@ -228,7 +232,7 @@ function DataSources({ s, save }: Props) {
                             max={1000}
                             defaultValue={d.priority}
                             style={{ width: 80 }}
-                            aria-label={`Priority of ${d.name}`}
+                            aria-label={t("Priority of {0}", d.name)}
                             onBlur={(e) => Number(e.target.value) !== d.priority && setPriority.mutate({ id: d.id, priority: Number(e.target.value) })}
                           />
                         )}
@@ -240,22 +244,20 @@ function DataSources({ s, save }: Props) {
             </div>
           )}
         </Loaded>
-        <p className="small muted mt-2">What each provider can supply, and its terms, is listed in the provider documentation (docs/PROVIDERS.md).</p>
+        <p className="small muted mt-2">{t("What each provider can supply, and its terms, is listed in the provider documentation (docs/PROVIDERS.md).")}</p>
       </section>
       <section className="card">
-        <h2>Saved answers (offline cache)</h2>
-        <Setting label="Refresh saved answers after" hint="Lookups that worked once keep working offline; after this many days they are refreshed when online.">
-          <select value={s.provider_refresh_days} onChange={(e) => save({ provider_refresh_days: Number(e.target.value) })} aria-label="Refresh days">
+        <h2>{t("Saved answers (offline cache)")}</h2>
+        <Setting label={t("Refresh saved answers after")} hint={t("Lookups that worked once keep working offline; after this many days they are refreshed when online.")}>
+          <select value={s.provider_refresh_days} onChange={(e) => save({ provider_refresh_days: Number(e.target.value) })} aria-label={t("Refresh days")}>
             {[1, 7, 30, 90, 365].map((d) => (
-              <option key={d} value={d}>
-                {d} day{d > 1 ? "s" : ""}
-              </option>
+              <option key={d} value={d}>{tx("{0} day{1}", d, d > 1 ? "s" : "")}</option>
             ))}
           </select>
         </Setting>
-        <Setting label="Stored" hint={cache.data?.oldest ? `Oldest from ${dateTime(cache.data.oldest)}` : undefined}>
+        <Setting label={t("Stored")} hint={cache.data?.oldest ? t("Oldest from {0}", dateTime(cache.data.oldest)) : undefined}>
           <div className="row">
-            <span className="muted">{cache.data ? `${cache.data.entries} answers · ${bytes(cache.data.bytes)}` : "…"}</span>
+            <span className="muted">{cache.data ? t("{0} answers · {1}", cache.data.entries, bytes(cache.data.bytes)) : "…"}</span>
             <button
               className="btn"
               onClick={() => {
@@ -263,9 +265,7 @@ function DataSources({ s, save }: Props) {
                 refresh();
               }}
               disabled={!cache.data?.entries}
-            >
-              Clear
-            </button>
+            >{t("Clear")}</button>
           </div>
         </Setting>
       </section>
@@ -275,15 +275,15 @@ function DataSources({ s, save }: Props) {
 
 function InventorySettings({ s, save }: Props) {
   const locs = useCmd<Location[]>("location_list");
-  const add = useAction<{ name: string }>("location_add", { invalidate: ["location_list"], success: "Location added" });
-  const rename = useAction<{ id: string; name: string }>("location_rename", { invalidate: ["location_list", "item_list"], success: "Renamed" });
-  const setDefault = useAction<{ id: string }>("location_set_default", { invalidate: ["location_list"], success: "Default location changed" });
+  const add = useAction<{ name: string }>("location_add", { invalidate: ["location_list"], success: t("Location added") });
+  const rename = useAction<{ id: string; name: string }>("location_rename", { invalidate: ["location_list", "item_list"], success: t("Renamed") });
+  const setDefault = useAction<{ id: string }>("location_set_default", { invalidate: ["location_list"], success: t("Default location changed") });
   const [name, setName] = useState("");
   return (
     <div className="stack">
       <section className="card">
-        <h2>Locations</h2>
-        <p className="small muted">Warehouses, shelves, vans: anywhere stock is kept. Damaged stock goes to the quarantine location, where it can't be sold or reserved.</p>
+        <h2>{t("Locations")}</h2>
+        <p className="small muted">{t("Warehouses, shelves, vans: anywhere stock is kept. Damaged stock goes to the quarantine location, where it can't be sold or reserved.")}</p>
         <Loaded q={locs}>
           {(list) => (
             <ul className="items" style={{ maxHeight: "none" }}>
@@ -292,20 +292,18 @@ function InventorySettings({ s, save }: Props) {
                   <input
                     type="text"
                     defaultValue={l.name}
-                    aria-label="Location name"
+                    aria-label={t("Location name")}
                     onBlur={(e) => e.target.value.trim() !== l.name && rename.mutate({ id: l.id, name: e.target.value })}
                     style={{ flex: 1, maxWidth: 320 }}
                   />
                   <span className="row">
-                    <span className="small muted">{l.item_count} items</span>
+                    <span className="small muted">{tx("{0} items", l.item_count)}</span>
                     {l.is_default ? (
-                      <Badge tone="info">Default</Badge>
+                      <Badge tone="info">{t("Default")}</Badge>
                     ) : l.kind === "damaged" ? (
-                      <Badge tone="warn">Quarantine</Badge>
+                      <Badge tone="warn">{t("Quarantine")}</Badge>
                     ) : (
-                      <button className="btn link" onClick={() => setDefault.mutate({ id: l.id })}>
-                        Make default
-                      </button>
+                      <button className="btn link" onClick={() => setDefault.mutate({ id: l.id })}>{t("Make default")}</button>
                     )}
                   </span>
                 </li>
@@ -320,36 +318,34 @@ function InventorySettings({ s, save }: Props) {
             add.mutate({ name }, { onSuccess: () => setName("") });
           }}
         >
-          <input type="text" placeholder="New location, e.g. Back shelf" value={name} onChange={(e) => setName(e.target.value)} aria-label="New location name" />
-          <button className="btn" disabled={!name.trim()}>
-            Add location
-          </button>
+          <input type="text" placeholder={t("New location, e.g. Back shelf")} value={name} onChange={(e) => setName(e.target.value)} aria-label={t("New location name")} />
+          <button className="btn" disabled={!name.trim()}>{t("Add location")}</button>
         </form>
       </section>
       <section className="card">
-        <h2>Stock</h2>
-        <Setting label="Inventory valuation" hint="Average cost follows every delivery (weighted average). Standard uses each item's last purchase cost.">
+        <h2>{t("Stock")}</h2>
+        <Setting label={t("Inventory valuation")} hint={t("Average cost follows every delivery (weighted average). Standard uses each item's last purchase cost.")}>
           <Segmented
-            name="Valuation"
+            name={t("Valuation")}
             value={s.valuation_method as "average" | "standard"}
             onChange={(valuation_method) => save({ valuation_method })}
             options={[
-              { v: "average", label: "Average cost" },
-              { v: "standard", label: "Last cost" },
+              { v: "average", label: t("Average cost") },
+              { v: "standard", label: t("Last cost") },
             ]}
           />
         </Setting>
-        <Setting label="Suggested minimum stock" hint="Pre-filled on new items; low-stock alerts start at or below it.">
-          <input type="number" min={0} defaultValue={s.default_min_stock} style={{ width: 90 }} aria-label="Default minimum stock" onBlur={(e) => save({ default_min_stock: Math.max(0, Number(e.target.value) || 0) })} />
+        <Setting label={t("Suggested minimum stock")} hint={t("Pre-filled on new items; low-stock alerts start at or below it.")}>
+          <input type="number" min={0} defaultValue={s.default_min_stock} style={{ width: 90 }} aria-label={t("Default minimum stock")} onBlur={(e) => save({ default_min_stock: Math.max(0, Number(e.target.value) || 0) })} />
         </Setting>
-        <Setting label="Label barcodes" hint="Barcode type printed on inventory labels. USB scanners work with both.">
+        <Setting label={t("Label barcodes")} hint={t("Barcode type printed on inventory labels. USB scanners work with both.")}>
           <Segmented
-            name="Label barcode"
+            name={t("Label barcode")}
             value={s.label_symbology as "code128" | "qr"}
             onChange={(label_symbology) => save({ label_symbology })}
             options={[
-              { v: "code128", label: "Code 128" },
-              { v: "qr", label: "QR code" },
+              { v: "code128", label: t("Code 128") },
+              { v: "qr", label: t("QR code") },
             ]}
           />
         </Setting>
@@ -361,15 +357,15 @@ function InventorySettings({ s, save }: Props) {
 function PricingSettings() {
   const go = useApp((s) => s.go);
   const profiles = useCmd<Profile[]>("profile_list");
-  const setDefault = useAction<{ id: string }>("profile_set_default", { invalidate: ["profile_list", "item_list", "vehicle_matches"], success: "Default profile changed" });
+  const setDefault = useAction<{ id: string }>("profile_set_default", { invalidate: ["profile_list", "item_list", "vehicle_matches"], success: t("Default profile changed") });
   return (
     <section className="card">
-      <h2>Pricing</h2>
+      <h2>{t("Pricing")}</h2>
       <Loaded q={profiles}>
         {(list) => (
           <>
-            <Setting label="Default pricing profile" hint="Used when neither the job, the customer nor the item names a profile.">
-              <select value={list.find((p) => p.is_default)?.id} onChange={(e) => setDefault.mutate({ id: e.target.value })} aria-label="Default pricing profile">
+            <Setting label={t("Default pricing profile")} hint={t("Used when neither the job, the customer nor the item names a profile.")}>
+              <select value={list.find((p) => p.is_default)?.id} onChange={(e) => setDefault.mutate({ id: e.target.value })} aria-label={t("Default pricing profile")}>
                 {list.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -377,10 +373,8 @@ function PricingSettings() {
                 ))}
               </select>
             </Setting>
-            <Setting label="Profiles, rules, labor rates and tax">
-              <button className="btn" onClick={() => go("pricing")}>
-                Open Pricing
-              </button>
+            <Setting label={t("Profiles, rules, labor rates and tax")}>
+              <button className="btn" onClick={() => go("pricing")}>{t("Open Pricing")}</button>
             </Setting>
           </>
         )}
@@ -416,31 +410,29 @@ function DataSettings({ s, save }: Props) {
     } catch (e) {
       return toast(errorMessage(e), { tone: "bad" });
     }
-    if (!(await ask("Restore this backup?", <>Your current data will be replaced by {label}. A backup of the current data is made first, and the previous files are kept in the data folder.</>, "Restore"))) return;
-    await run("restore", () => call("backup_restore", { path }), "Backup restored");
+    if (!(await ask(t("Restore this backup?"), <>{tx("Your current data will be replaced by {0}. A backup of the current data is made first, and the previous files are kept in the data folder.", label)}</>, t("Restore")))) return;
+    await run("restore", () => call("backup_restore", { path }), t("Backup restored"));
   };
   return (
     <div className="stack">
       {dialog}
       <section className="card">
-        <h2>Backups</h2>
-        <Setting label="Automatic daily backup" hint="Kept for 14 days. A backup is also made before every update, data upgrade and restore.">
-          <Switch checked={s.backup_auto} onChange={(backup_auto) => save({ backup_auto })} label="Automatic daily backup" />
+        <h2>{t("Backups")}</h2>
+        <Setting label={t("Automatic daily backup")} hint={t("Kept for 14 days. A backup is also made before every update, data upgrade and restore.")}>
+          <Switch checked={s.backup_auto} onChange={(backup_auto) => save({ backup_auto })} label={t("Automatic daily backup")} />
         </Setting>
         <div className="row">
-          <button className="btn primary" disabled={!!busy} onClick={() => run("now", () => call("backup_now"), "Backup made")}>
-            {busy === "now" ? <Spinner /> : <HardDriveDownload size={16} aria-hidden />} Back up now
-          </button>
+          <button className="btn primary" disabled={!!busy} onClick={() => run("now", () => call("backup_now"), t("Backup made"))}>
+            {busy === "now" ? <Spinner /> : <HardDriveDownload size={16} aria-hidden />}{" "}{t("Back up now")}</button>
           <button
             className="btn"
             disabled={!!busy}
             onClick={async () => {
               const path = await saveFile({ defaultPath: `auto-manager-backup-${new Date().toISOString().slice(0, 10)}.zip`, filters: [{ name: "Backup", extensions: ["zip"] }] });
-              if (path) await run("to", () => call("backup_to", { path }), "Backup saved");
+              if (path) await run("to", () => call("backup_to", { path }), t("Backup saved"));
             }}
           >
-            <Download size={16} aria-hidden /> Save a backup to…
-          </button>
+            <Download size={16} aria-hidden />{" "}{t("Save a backup to…")}</button>
           <button
             className="btn"
             disabled={!!busy}
@@ -449,21 +441,20 @@ function DataSettings({ s, save }: Props) {
               if (typeof path === "string") await restore(path);
             }}
           >
-            <Upload size={16} aria-hidden /> Restore from file…
-          </button>
+            <Upload size={16} aria-hidden />{" "}{t("Restore from file…")}</button>
         </div>
         <Loaded q={backups}>
           {(list) =>
             list.length === 0 ? (
-              <p className="small muted mt-2">No backups yet.</p>
+              <p className="small muted mt-2">{t("No backups yet.")}</p>
             ) : (
               <div className="table-wrap mt-2" style={{ maxHeight: 280 }}>
                 <table>
                   <thead>
                     <tr>
-                      <th>Made</th>
-                      <th>Why</th>
-                      <th>Size</th>
+                      <th>{t("Made")}</th>
+                      <th>{t("Why")}</th>
+                      <th>{t("Size")}</th>
                       <th />
                     </tr>
                   </thead>
@@ -475,9 +466,7 @@ function DataSettings({ s, save }: Props) {
                         <td>{bytes(b.size)}</td>
                         <td>
                           {b.manifest && (
-                            <button className="btn link" disabled={!!busy} onClick={() => restore(b.path)}>
-                              Restore
-                            </button>
+                            <button className="btn link" disabled={!!busy} onClick={() => restore(b.path)}>{t("Restore")}</button>
                           )}
                         </td>
                       </tr>
@@ -492,7 +481,7 @@ function DataSettings({ s, save }: Props) {
       <FolderSync />
       <SyncBundles busy={busy} run={run} />
       <section className="card">
-        <h2>Export</h2>
+        <h2>{t("Export")}</h2>
         <div className="row">
           {(["csv", "xlsx"] as const).map((ext) => (
             <button
@@ -500,37 +489,32 @@ function DataSettings({ s, save }: Props) {
               className="btn"
               onClick={async () => {
                 const path = await saveFile({ defaultPath: `inventory.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
-                if (path) await run("export", () => call("export_inventory", { path }), "Inventory exported");
+                if (path) await run("export", () => call("export_inventory", { path }), t("Inventory exported"));
               }}
-            >
-              Export inventory ({ext.toUpperCase()})
-            </button>
+            >{tx("Export inventory ({0})", ext.toUpperCase())}</button>
           ))}
           <button
             className="btn"
             onClick={async () => {
               const path = await saveFile({ defaultPath: "auto-manager-data.json", filters: [{ name: "JSON", extensions: ["json"] }] });
-              if (path) await run("json", () => call("export_json", { path }), "All data exported");
+              if (path) await run("json", () => call("export_json", { path }), t("All data exported"));
             }}
-          >
-            Export everything (JSON)
-          </button>
+          >{t("Export everything (JSON)")}</button>
         </div>
       </section>
       <section className="card">
-        <h2>Storage</h2>
+        <h2>{t("Storage")}</h2>
         {info.data && (
           <dl className="kv">
-            <dt>Data folder</dt>
+            <dt>{t("Data folder")}</dt>
             <dd className="mono">{info.data.data_dir}</dd>
-            <dt>Data version</dt>
+            <dt>{t("Data version")}</dt>
             <dd>{info.data.schema_version}</dd>
           </dl>
         )}
         <div className="row mt-2">
           <button className="btn" onClick={() => info.data && revealItemInDir(info.data.data_dir + "/auto-manager.db").catch((e) => toast(errorMessage(e), { tone: "bad" }))}>
-            <FolderOpen size={16} aria-hidden /> Show in folder
-          </button>
+            <FolderOpen size={16} aria-hidden />{" "}{t("Show in folder")}</button>
           <button
             className="btn"
             disabled={!!busy}
@@ -538,7 +522,7 @@ function DataSettings({ s, save }: Props) {
               setBusy("check");
               try {
                 const r = await call<string>("integrity_check");
-                toast(r === "ok" ? "The database is healthy." : `Problems found: ${r}`, r === "ok" ? undefined : { tone: "bad" });
+                toast(r === "ok" ? t("The database is healthy.") : t("Problems found: {0}", r), r === "ok" ? undefined : { tone: "bad" });
               } catch (e) {
                 toast(errorMessage(e), { tone: "bad" });
               } finally {
@@ -546,10 +530,9 @@ function DataSettings({ s, save }: Props) {
               }
             }}
           >
-            {busy === "check" ? <Spinner /> : <ShieldCheck size={16} aria-hidden />} Check database
-          </button>
+            {busy === "check" ? <Spinner /> : <ShieldCheck size={16} aria-hidden />}{" "}{t("Check database")}</button>
         </div>
-        <p className="small muted mt-2">Your data stays on this computer. Nothing is uploaded, and there is no account or telemetry.</p>
+        <p className="small muted mt-2">{t("Your data stays on this computer. Nothing is uploaded, and there is no account or telemetry.")}</p>
       </section>
     </div>
   );
@@ -562,81 +545,78 @@ function Updates({ s, save }: Props) {
   return (
     <div className="stack">
       <section className="card">
-        <h2>Version</h2>
+        <h2>{t("Version")}</h2>
         <dl className="kv">
-          <dt>Installed</dt>
+          <dt>{t("Installed")}</dt>
           <dd>
-            {info.data?.version ?? "…"} {info.data?.debug && <Badge tone="warn">development build</Badge>}
+            {info.data?.version ?? "…"} {info.data?.debug && <Badge tone="warn">{t("development build")}</Badge>}
           </dd>
-          <dt>Latest</dt>
+          <dt>{t("Latest")}</dt>
           <dd>
-            {u.available ? `${u.available.version}` : u.checked && !u.error ? "You're up to date" : "—"}
-            {s.last_update_check && <span className="muted"> · checked {ago(s.last_update_check)}</span>}
+            {u.available ? `${u.available.version}` : u.checked && !u.error ? t("You're up to date") : "—"}
+            {s.last_update_check && <span className="muted">{" "}{tx("· checked {0}", ago(s.last_update_check))}</span>}
           </dd>
-          <dt>Installed as</dt>
+          <dt>{t("Installed as")}</dt>
           <dd>{info.data ? `${info.data.bundle ?? "unpackaged build"} · ${info.data.os} ${info.data.arch}` : "…"}</dd>
         </dl>
         {managed && (
-          <div className="notice info mt-2">This copy wasn't installed from an Auto Manager package (for example a Flatpak or a build from source), so it is updated by the way it was installed, not from here.</div>
+          <div className="notice info mt-2">{t("This copy wasn't installed from an Auto Manager package (for example a Flatpak or a build from source), so it is updated by the way it was installed, not from here.")}</div>
         )}
         <div className="row mt-2">
           <button className="btn" onClick={() => u.check(s.update_channel)} disabled={u.checking || u.downloading}>
-            {u.checking ? <Spinner /> : <RefreshCw size={16} aria-hidden />} {u.checking ? "Checking…" : "Check for Updates"}
+            {u.checking ? <Spinner /> : <RefreshCw size={16} aria-hidden />} {u.checking ? t("Checking…") : t("Check for Updates")}
           </button>
         </div>
         {u.error && <div className="notice bad mt-2">{u.error}</div>}
         {u.available && (
           <div className="stack mt-2">
             <details open>
-              <summary>What's new in {u.available.version}</summary>
-              <pre className="notes mt-2">{u.available.notes || "No release notes."}</pre>
+              <summary>{tx("What's new in {0}", u.available.version)}</summary>
+              <pre className="notes mt-2">{u.available.notes || t("No release notes.")}</pre>
             </details>
             {!u.ready && (
               <button className="btn primary" onClick={u.download} disabled={u.downloading}>
-                {u.downloading ? <Spinner /> : <Download size={16} aria-hidden />} Download update
-              </button>
+                {u.downloading ? <Spinner /> : <Download size={16} aria-hidden />}{" "}{t("Download update")}</button>
             )}
             {u.progress && !u.ready && (
               <div>
-                <ProgressBar value={u.progress.downloaded} max={u.progress.total ?? 0} label="Download progress" />
+                <ProgressBar value={u.progress.downloaded} max={u.progress.total ?? 0} label={t("Download progress")} />
                 <p className="small muted">
                   {bytes(u.progress.downloaded)}
-                  {u.progress.total ? ` of ${bytes(u.progress.total)}` : ""}
+                  {u.progress.total ? t(" of {0}", bytes(u.progress.total)) : ""}
                 </p>
               </div>
             )}
             {u.ready && (
               <div className="notice ok spread">
-                <span>The update is downloaded and its signature checked. Your data will be backed up before it installs.</span>
-                <button className="btn primary" onClick={u.installAndRestart}>
-                  Restart and install
-                </button>
+                <span>{t("The update is downloaded and its signature checked. Your data will be backed up before it installs.")}</span>
+                <button className="btn primary" onClick={u.installAndRestart}>{t("Restart and install")}</button>
               </div>
             )}
           </div>
         )}
       </section>
       <section className="card">
-        <h2>Preferences</h2>
-        <Setting label="Check for updates when Auto Manager starts" hint="At most once a day.">
-          <Switch checked={s.update_check} onChange={(update_check) => save({ update_check })} label="Check for updates automatically" />
+        <h2>{t("Preferences")}</h2>
+        <Setting label={t("Check for updates when Auto Manager starts")} hint={t("At most once a day.")}>
+          <Switch checked={s.update_check} onChange={(update_check) => save({ update_check })} label={t("Check for updates automatically")} />
         </Setting>
-        <Setting label="Download updates automatically" hint="Installing always waits for you.">
-          <Switch checked={s.update_download} disabled={!s.update_check} onChange={(update_download) => save({ update_download })} label="Download updates automatically" />
+        <Setting label={t("Download updates automatically")} hint={t("Installing always waits for you.")}>
+          <Switch checked={s.update_download} disabled={!s.update_check} onChange={(update_download) => save({ update_download })} label={t("Download updates automatically")} />
         </Setting>
-        <Setting label="Release channel" hint="Beta gets new features first and may have rough edges. Switching back to stable never installs an older version.">
+        <Setting label={t("Release channel")} hint={t("Beta gets new features first and may have rough edges. Switching back to stable never installs an older version.")}>
           <Segmented
-            name="Release channel"
+            name={t("Release channel")}
             value={s.update_channel as "stable" | "beta"}
             onChange={(update_channel) => save({ update_channel })}
             options={[
-              { v: "stable", label: "Stable" },
-              { v: "beta", label: "Beta" },
+              { v: "stable", label: t("Stable") },
+              { v: "beta", label: t("Beta") },
             ]}
           />
         </Setting>
-        <Setting label="Release notes and downloads">
-          <ExtLink href="https://github.com/fleetwoodjohnr/auto-manager/releases">All releases</ExtLink>
+        <Setting label={t("Release notes and downloads")}>
+          <ExtLink href="https://github.com/fleetwoodjohnr/auto-manager/releases">{t("All releases")}</ExtLink>
         </Setting>
       </section>
     </div>
@@ -650,13 +630,13 @@ function SyncBundles({ busy, run }: { busy: string | null; run: (what: string, f
   const { ask, dialog } = useConfirm();
   const go = async () => {
     if (mode === "export") {
-      const path = await saveFile({ defaultPath: `auto-manager-${new Date().toISOString().slice(0, 10)}.amsync`, filters: [{ name: "Auto Manager sync bundle", extensions: ["amsync"] }] });
-      if (path) await run("sync", () => call("sync_export", { path, passphrase: pass }), "Encrypted bundle saved");
+      const path = await saveFile({ defaultPath: `auto-manager-${new Date().toISOString().slice(0, 10)}.amsync`, filters: [{ name: t("Auto Manager sync bundle"), extensions: ["amsync"] }] });
+      if (path) await run("sync", () => call("sync_export", { path, passphrase: pass }), t("Encrypted bundle saved"));
     } else {
-      const path = await openFile({ filters: [{ name: "Auto Manager sync bundle", extensions: ["amsync"] }] });
+      const path = await openFile({ filters: [{ name: t("Auto Manager sync bundle"), extensions: ["amsync"] }] });
       if (typeof path !== "string") return;
-      if (!(await ask("Replace this computer's data?", "Everything here is replaced by the bundle's contents. A backup of the current data is made first.", "Replace"))) return;
-      await run("sync", () => call("sync_import", { path, passphrase: pass }), "Data replaced from the bundle");
+      if (!(await ask(t("Replace this computer's data?"), t("Everything here is replaced by the bundle's contents. A backup of the current data is made first."), t("Replace")))) return;
+      await run("sync", () => call("sync_import", { path, passphrase: pass }), t("Data replaced from the bundle"));
     }
     setMode(null);
     setPass("");
@@ -664,15 +644,11 @@ function SyncBundles({ busy, run }: { busy: string | null; run: (what: string, f
   return (
     <section className="card">
       {dialog}
-      <h2>Move to another computer</h2>
-      <p className="small muted">An encrypted bundle (a full backup locked with your passphrase) that you can carry on a USB stick or put in a synced folder, then open on another computer. It replaces everything on the other computer. To keep computers in step with each other, use Sync between computers above.</p>
+      <h2>{t("Move to another computer")}</h2>
+      <p className="small muted">{t("An encrypted bundle (a full backup locked with your passphrase) that you can carry on a USB stick or put in a synced folder, then open on another computer. It replaces everything on the other computer. To keep computers in step with each other, use Sync between computers above.")}</p>
       <div className="row">
-        <button className="btn" onClick={() => setMode("export")}>
-          Create encrypted bundle…
-        </button>
-        <button className="btn" onClick={() => setMode("import")}>
-          Open a bundle…
-        </button>
+        <button className="btn" onClick={() => setMode("export")}>{t("Create encrypted bundle…")}</button>
+        <button className="btn" onClick={() => setMode("import")}>{t("Open a bundle…")}</button>
       </div>
       {mode && (
         <form
@@ -682,16 +658,14 @@ function SyncBundles({ busy, run }: { busy: string | null; run: (what: string, f
             void go();
           }}
         >
-          <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="Passphrase (at least 10 characters)" autoFocus aria-label="Passphrase" style={{ width: 300 }} />
+          <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder={t("Passphrase (at least 10 characters)")} autoFocus aria-label={t("Passphrase")} style={{ width: 300 }} />
           <button className="btn primary" disabled={pass.length < 10 || !!busy}>
-            {mode === "export" ? "Choose where to save" : "Choose the bundle"}
+            {mode === "export" ? t("Choose where to save") : t("Choose the bundle")}
           </button>
-          <button type="button" className="btn ghost" onClick={() => setMode(null)}>
-            Cancel
-          </button>
+          <button type="button" className="btn ghost" onClick={() => setMode(null)}>{t("Cancel")}</button>
         </form>
       )}
-      <p className="small muted mt-1">Without the passphrase a bundle can't be opened, by anyone. Keep it somewhere safe.</p>
+      <p className="small muted mt-1">{t("Without the passphrase a bundle can't be opened, by anyone. Keep it somewhere safe.")}</p>
     </section>
   );
 }

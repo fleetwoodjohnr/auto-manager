@@ -1,3 +1,4 @@
+import { tm } from "../i18n";
 import { invoke } from "@tauri-apps/api/core";
 
 /** Error shape produced by the Rust `AppError` serializer. */
@@ -12,8 +13,8 @@ export function isAppError(e: unknown): e is AppError {
 }
 
 export function errorMessage(e: unknown): string {
-  if (isAppError(e)) return e.message;
-  if (e instanceof Error) return e.message;
+  if (isAppError(e)) return tm(e.message);
+  if (e instanceof Error) return tm(e.message);
   return String(e);
 }
 

@@ -15,6 +15,12 @@ First release.
 - **Manuals.** PDF library and viewer with search, contents, bookmarks, notes and printing. "Where Is It?" component lookup. Verified official owner-manual links.
 - **Diagnostics.** OBD-II code reference (OBDex, CC0). Read-only ELM327 scanner.
 - **Business.** Suppliers, prices and comparison, reorder assistant, purchase orders and receiving, reports with CSV/Excel/PDF output, Data Quality Center.
+- **Scanning.** Read a VIN with the camera or from a photo (door-jamb barcodes and printed plates, check-digit verified), and part barcodes in Inventory.
+- **Service bulletins.** NHTSA manufacturer communications for each model, searchable, with their PDFs.
+- **From your manuals.** Torque, fluid capacities, tire pressures and other specifications, and service intervals, found in your imported manuals and saved with the page cited.
+- **Fractional quantities.** Items sold by the litre, foot or kilo, with units.
+- **Sync between computers.** Two-way, encrypted, through a shared folder; conflicts in stock and invoice numbers are corrected and reported.
+- **Languages.** Spanish and French.
 - **Attachments and saved searches.** Photos and PDFs (receipts, invoices, diagrams) on vehicles, parts, items and jobs. Saved filters on the Inventory and Parts lists.
 - **Data.** Daily automatic backups, verified restore, encrypted transfer bundles, JSON export.
 - **Updates.** Signed updates from GitHub Releases, with stable and beta channels.

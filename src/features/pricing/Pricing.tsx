@@ -7,8 +7,9 @@ import type { Category, Item, PriceResult, Profile, ProfileInput, Rule, RuleInpu
 import { useApp } from "../../store";
 import { ActionsMenu, Badge, cx, Field, Loaded, Modal, PageHead, useConfirm } from "../../ui";
 import { money, pct } from "../../lib/format";
+import { t, tx } from "../../i18n";
 
-const KIND: Record<string, string> = { retail: "Retail", wholesale: "Wholesale", internal: "Internal cost", fleet: "Fleet", customer: "Customer-specific", custom: "Custom" };
+const KIND: Record<string, string> = { retail: "Retail", wholesale: "Wholesale", internal: t("Internal cost"), fleet: "Fleet", customer: "Customer-specific", custom: "Custom" };
 
 export default function Pricing() {
   const go = useApp((s) => s.go);
@@ -21,22 +22,19 @@ export default function Pricing() {
   const p = q.data?.find((x) => x.id === sel);
   return (
     <div className="page wide">
-      <PageHead title="Pricing & Estimates" sub="How selling prices are worked out from cost: markup, target margin or fixed prices, by category, brand or item.">
-        <button className="btn" onClick={() => go({ page: "service", tab: "new" })}>
-          New estimate
-        </button>
+      <PageHead title={t("Pricing & Estimates")} sub={t("How selling prices are worked out from cost: markup, target margin or fixed prices, by category, brand or item.")}>
+        <button className="btn" onClick={() => go({ page: "service", tab: "new" })}>{t("New estimate")}</button>
         <button className="btn primary" onClick={() => setEditing("new")}>
-          <Plus size={16} aria-hidden /> New profile
-        </button>
+          <Plus size={16} aria-hidden />{" "}{t("New profile")}</button>
       </PageHead>
       <Loaded q={q}>
         {(list) => (
           <div className="flex gap-4" style={{ alignItems: "flex-start" }}>
-            <nav className="card" style={{ width: 240, flex: "none", padding: 8 }} aria-label="Pricing profiles">
+            <nav className="card" style={{ width: 240, flex: "none", padding: 8 }} aria-label={t("Pricing profiles")}>
               {list.map((x) => (
                 <button key={x.id} className={cx("btn ghost w-full", x.id === sel && "soft")} style={{ justifyContent: "space-between" }} aria-current={x.id === sel} onClick={() => setSel(x.id)}>
                   <span className="truncate">{x.name}</span>
-                  {x.is_default && <Star size={13} aria-label="Default" />}
+                  {x.is_default && <Star size={13} aria-label={t("Default")} />}
                 </button>
               ))}
             </nav>
@@ -51,13 +49,13 @@ export default function Pricing() {
 
 function ProfileView({ p, onEdit, onDeleted }: { p: Profile; onEdit: () => void; onDeleted: () => void }) {
   const [rule, setRule] = useState<Rule | "new" | null>(null);
-  const setDefault = useAction<{ id: string }>("profile_set_default", { success: "Default profile changed" });
-  const del = useAction<{ id: string }>("profile_delete", { success: "Profile deleted" });
-  const delRule = useAction<{ id: string }>("rule_delete", { success: "Rule removed" });
+  const setDefault = useAction<{ id: string }>("profile_set_default", { success: t("Default profile changed") });
+  const del = useAction<{ id: string }>("profile_delete", { success: t("Profile deleted") });
+  const delRule = useAction<{ id: string }>("rule_delete", { success: t("Rule removed") });
   const toggle = useAction<{ profileId: string; id: string; input: RuleInput }>("rule_save", {});
   const { ask, dialog } = useConfirm();
   const method = (r: Rule) => (r.method === "fixed" ? `Fixed ${money(r.value)}` : r.method === "markup" ? `${pct(r.value)} markup on cost` : `${pct(r.value)} margin`);
-  const scope = (r: Rule) => (r.scope === "all" ? "All products" : r.scope === "category" ? `Category: ${r.scope_label}` : r.scope === "brand" ? `Brand: ${r.scope_label}` : `Item: ${r.scope_label}`);
+  const scope = (r: Rule) => (r.scope === "all" ? t("All products") : r.scope === "category" ? `Category: ${r.scope_label}` : r.scope === "brand" ? `Brand: ${r.scope_label}` : `Item: ${r.scope_label}`);
   return (
     <div className="flex-1 min-w-0 stack">
       {dialog}
@@ -66,45 +64,41 @@ function ProfileView({ p, onEdit, onDeleted }: { p: Profile; onEdit: () => void;
           <div>
             <h2 style={{ fontSize: 18 }}>{p.name}</h2>
             <p className="row small muted">
-              <Badge>{KIND[p.kind]}</Badge> Tax {pct(p.tax_rate_pct, 3)}
-              {p.prices_include_tax ? " (included in prices)" : " (added to prices)"} · Rounding: {p.rounding_mode === "ending" ? `prices end in .${String(p.rounding_ending ?? "0.99").split(".")[1] ?? "99"}` : `${p.rounding_mode} ${money(p.rounding_increment)}`} · Labor {p.labor_rate ? `${money(p.labor_rate)}/h` : "not set"}
+              <Badge>{KIND[p.kind]}</Badge>{" "}{t("Tax")}{" "}{pct(p.tax_rate_pct, 3)}
+              {p.prices_include_tax ? t(" (included in prices)") : t(" (added to prices)")}{" "}{t("· Rounding:")}{" "}{p.rounding_mode === "ending" ? t("prices end in .{0}", String(p.rounding_ending ?? "0.99").split(".")[1] ?? "99") : `${p.rounding_mode} ${money(p.rounding_increment)}`}{" "}{t("· Labor")}{" "}{p.labor_rate ? `${money(p.labor_rate)}/h` : t("not set")}
             </p>
           </div>
           <div className="row">
             {!p.is_default && (
               <button className="btn" onClick={() => setDefault.mutate({ id: p.id })}>
-                <Star size={14} aria-hidden /> Make default
-              </button>
+                <Star size={14} aria-hidden />{" "}{t("Make default")}</button>
             )}
-            <button className="btn" onClick={onEdit}>
-              Edit settings
-            </button>
+            <button className="btn" onClick={onEdit}>{t("Edit settings")}</button>
             {!p.is_default && (
-              <ActionsMenu items={[{ label: "Delete profile", danger: true, icon: <Trash2 size={14} />, run: async () => (await ask(`Delete ${p.name}?`, "Items, customers and jobs using it fall back to the default profile.")) && del.mutate({ id: p.id }, { onSuccess: onDeleted }) }]} />
+              <ActionsMenu items={[{ label: t("Delete profile"), danger: true, icon: <Trash2 size={14} />, run: async () => (await ask(t("Delete {0}?", p.name), t("Items, customers and jobs using it fall back to the default profile."))) && del.mutate({ id: p.id }, { onSuccess: onDeleted }) }]} />
             )}
           </div>
         </div>
       </section>
       <section className="card">
         <div className="spread">
-          <h2>Rules</h2>
+          <h2>{t("Rules")}</h2>
           <button className="btn" onClick={() => setRule("new")}>
-            <Plus size={14} aria-hidden /> Add rule
-          </button>
+            <Plus size={14} aria-hidden />{" "}{t("Add rule")}</button>
         </div>
-        <p className="small muted">The rule with the lowest priority number that applies is used; at equal priority the most specific wins (item, then brand, then category, then all). A fixed price set on an item beats every rule. With no applicable rule there's no price: nothing is assumed.</p>
+        <p className="small muted">{t("The rule with the lowest priority number that applies is used; at equal priority the most specific wins (item, then brand, then category, then all). A fixed price set on an item beats every rule. With no applicable rule there's no price: nothing is assumed.")}</p>
         {p.rules.length === 0 ? (
-          <div className="notice warn">This profile has no rules yet, so items without a fixed price have no selling price. Add a rule such as “All products: 40% markup on cost”.</div>
+          <div className="notice warn">{t("This profile has no rules yet, so items without a fixed price have no selling price. Add a rule such as “All products: 40% markup on cost”.")}</div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Priority</th>
-                <th>Applies to</th>
-                <th>Price</th>
-                <th>Min qty</th>
-                <th>Min price</th>
-                <th>On</th>
+                <th>{t("Priority")}</th>
+                <th>{t("Applies to")}</th>
+                <th>{t("Price")}</th>
+                <th>{t("Min qty")}</th>
+                <th>{t("Min price")}</th>
+                <th>{t("On")}</th>
                 <th />
               </tr>
             </thead>
@@ -125,7 +119,7 @@ function ProfileView({ p, onEdit, onDeleted }: { p: Profile; onEdit: () => void;
                       role="switch"
                       className="switch"
                       checked={r.enabled}
-                      aria-label="Rule enabled"
+                      aria-label={t("Rule enabled")}
                       onChange={(e) =>
                         toggle.mutate({ profileId: p.id, id: r.id, input: { priority: r.priority, scope: r.scope, scope_value: r.scope_value, method: r.method, value: r.value, min_qty: r.min_qty, min_price: r.min_price, enabled: e.target.checked, note: r.note } })
                       }
@@ -134,8 +128,8 @@ function ProfileView({ p, onEdit, onDeleted }: { p: Profile; onEdit: () => void;
                   <td>
                     <ActionsMenu
                       items={[
-                        { label: "Edit", run: () => setRule(r) },
-                        { label: "Remove", danger: true, run: () => delRule.mutate({ id: r.id }) },
+                        { label: t("Edit"), run: () => setRule(r) },
+                        { label: t("Remove"), danger: true, run: () => delRule.mutate({ id: r.id }) },
                       ]}
                     />
                   </td>
@@ -164,13 +158,12 @@ function TryIt({ profileId }: { profileId: string }) {
   return (
     <section className="card">
       <h2>
-        <Calculator size={16} aria-hidden /> Try it
-      </h2>
+        <Calculator size={16} aria-hidden />{" "}{t("Try it")}</h2>
       <div className="grid" style={{ gridTemplateColumns: "120px 1fr 1fr 90px" }}>
-        <Field label="Cost">
+        <Field label={t("Cost")}>
           <input type="text" inputMode="decimal" value={f.cost} onChange={(e) => setF({ ...f, cost: e.target.value })} />
         </Field>
-        <Field label="Category">
+        <Field label={t("Category")}>
           <select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
             <option value="">—</option>
             {cats.data?.map((c) => (
@@ -181,10 +174,10 @@ function TryIt({ profileId }: { profileId: string }) {
             ))}
           </select>
         </Field>
-        <Field label="Brand">
+        <Field label={t("Brand")}>
           <input type="text" value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })} />
         </Field>
-        <Field label="Qty">
+        <Field label={t("Qty")}>
           <input type="number" min={1} value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} />
         </Field>
       </div>
@@ -198,7 +191,7 @@ function TryIt({ profileId }: { profileId: string }) {
           </ol>
           {r.data.price && (
             <p>
-              <strong style={{ fontSize: 18 }}>{money(r.data.price)}</strong> <span className="muted">· profit {money(r.data.profit)} · margin {pct(r.data.margin_pct)} · markup {pct(r.data.markup_pct)}</span>
+              <strong style={{ fontSize: 18 }}>{money(r.data.price)}</strong> <span className="muted">{tx("· profit {0} · margin {1} · markup {2}", money(r.data.profit), pct(r.data.margin_pct), pct(r.data.markup_pct))}</span>
             </p>
           )}
         </div>
@@ -219,30 +212,26 @@ function EditProfile({ p, onClose }: { p: Profile | null; onClose: (id?: string)
     labor_rate: p?.labor_rate ?? null,
     notes: p?.notes ?? "",
   });
-  const save = useAction<{ id: string | null; input: ProfileInput }, Profile>("profile_save", { success: "Saved", silentError: true });
+  const save = useAction<{ id: string | null; input: ProfileInput }, Profile>("profile_save", { success: t("Saved"), silentError: true });
   const fe = (k: string) => (save.error && errorField(save.error) === k ? errorMessage(save.error) : null);
   const set = <K extends keyof ProfileInput>(k: K, v: ProfileInput[K]) => setF({ ...f, [k]: v });
   return (
     <Modal
       open
-      title={p ? "Profile settings" : "New pricing profile"}
+      title={p ? t("Profile settings") : t("New pricing profile")}
       onClose={() => onClose()}
       footer={
         <>
-          <button className="btn" onClick={() => onClose()}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={() => save.mutate({ id: p?.id ?? null, input: f }, { onSuccess: (np) => onClose(np.id) })}>
-            Save
-          </button>
+          <button className="btn" onClick={() => onClose()}>{t("Cancel")}</button>
+          <button className="btn primary" onClick={() => save.mutate({ id: p?.id ?? null, input: f }, { onSuccess: (np) => onClose(np.id) })}>{t("Save")}</button>
         </>
       }
     >
       <div className="grid two">
-        <Field label="Name" error={fe("name")}>
+        <Field label={t("Name")} error={fe("name")}>
           <input type="text" value={f.name} onChange={(e) => set("name", e.target.value)} autoFocus />
         </Field>
-        <Field label="Type">
+        <Field label={t("Type")}>
           <select value={f.kind} onChange={(e) => set("kind", e.target.value)}>
             {Object.entries(KIND).map(([k, l]) => (
               <option key={k} value={k}>
@@ -251,34 +240,33 @@ function EditProfile({ p, onClose }: { p: Profile | null; onClose: (id?: string)
             ))}
           </select>
         </Field>
-        <Field label="Tax rate (%)" error={fe("tax_rate_pct")}>
+        <Field label={t("Tax rate (%)")} error={fe("tax_rate_pct")}>
           <input type="text" inputMode="decimal" value={f.tax_rate_pct} onChange={(e) => set("tax_rate_pct", e.target.value)} />
         </Field>
-        <Field label="Labor rate per hour" error={fe("labor_rate")}>
+        <Field label={t("Labor rate per hour")} error={fe("labor_rate")}>
           <input type="text" inputMode="decimal" value={f.labor_rate ?? ""} onChange={(e) => set("labor_rate", e.target.value || null)} />
         </Field>
-        <Field label="Rounding" error={fe("rounding_mode")}>
+        <Field label={t("Rounding")} error={fe("rounding_mode")}>
           <select value={f.rounding_mode} onChange={(e) => set("rounding_mode", e.target.value)}>
-            <option value="nearest">To the nearest…</option>
-            <option value="up">Up to the next…</option>
-            <option value="down">Down to…</option>
-            <option value="ending">Price ending (e.g. .99)</option>
+            <option value="nearest">{t("To the nearest…")}</option>
+            <option value="up">{t("Up to the next…")}</option>
+            <option value="down">{t("Down to…")}</option>
+            <option value="ending">{t("Price ending (e.g. .99)")}</option>
           </select>
         </Field>
         {f.rounding_mode === "ending" ? (
-          <Field label="Ending" error={fe("rounding_ending")}>
+          <Field label={t("Ending")} error={fe("rounding_ending")}>
             <input type="text" inputMode="decimal" value={f.rounding_ending ?? "0.99"} onChange={(e) => set("rounding_ending", e.target.value)} />
           </Field>
         ) : (
-          <Field label="Increment" hint="0.01 = to the cent, 0.05, 1.00 …" error={fe("rounding_increment")}>
+          <Field label={t("Increment")} hint={t("0.01 = to the cent, 0.05, 1.00 …")} error={fe("rounding_increment")}>
             <input type="text" inputMode="decimal" value={f.rounding_increment} onChange={(e) => set("rounding_increment", e.target.value)} />
           </Field>
         )}
       </div>
       <label className="check">
-        <input type="checkbox" checked={f.prices_include_tax} onChange={(e) => set("prices_include_tax", e.target.checked)} /> Prices include tax (tax is worked out of the price instead of added)
-      </label>
-      <Field label="Notes">
+        <input type="checkbox" checked={f.prices_include_tax} onChange={(e) => set("prices_include_tax", e.target.checked)} />{" "}{t("Prices include tax (tax is worked out of the price instead of added)")}</label>
+      <Field label={t("Notes")}>
         <input type="text" value={f.notes} onChange={(e) => set("notes", e.target.value)} />
       </Field>
       {save.error != null && !errorField(save.error) && <div className="notice bad">{errorMessage(save.error)}</div>}
@@ -291,36 +279,32 @@ function EditRule({ profile, r, onClose }: { profile: Profile; r: Rule | null; o
   const brands = useCmd<string[]>("part_brands");
   const items = useCmd<Item[]>("item_list", { query: { q: null, category_id: null, location_id: null, stock: null, include_archived: false } });
   const [f, setF] = useState<RuleInput>({ priority: r?.priority ?? 100, scope: r?.scope ?? "all", scope_value: r?.scope_value ?? null, method: r?.method ?? "markup", value: r ? String(r.value) : "", min_qty: r?.min_qty ?? 1, min_price: r?.min_price ?? null, enabled: r?.enabled ?? true, note: r?.note ?? "" });
-  const save = useAction<{ profileId: string; id: string | null; input: RuleInput }>("rule_save", { success: "Rule saved", silentError: true });
+  const save = useAction<{ profileId: string; id: string | null; input: RuleInput }>("rule_save", { success: t("Rule saved"), silentError: true });
   const fe = (k: string) => (save.error && errorField(save.error) === k ? errorMessage(save.error) : null);
   const set = <K extends keyof RuleInput>(k: K, v: RuleInput[K]) => setF({ ...f, [k]: v });
   return (
     <Modal
       open
-      title={r ? "Edit rule" : "Add rule"}
+      title={r ? t("Edit rule") : t("Add rule")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={() => save.mutate({ profileId: profile.id, id: r?.id ?? null, input: f }, { onSuccess: onClose })}>
-            Save
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
+          <button className="btn primary" onClick={() => save.mutate({ profileId: profile.id, id: r?.id ?? null, input: f }, { onSuccess: onClose })}>{t("Save")}</button>
         </>
       }
     >
       <div className="grid two">
-        <Field label="Applies to" error={fe("scope")}>
+        <Field label={t("Applies to")} error={fe("scope")}>
           <select value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value, scope_value: null })}>
-            <option value="all">All products</option>
-            <option value="category">A category</option>
-            <option value="brand">A brand</option>
-            <option value="item">One item</option>
+            <option value="all">{t("All products")}</option>
+            <option value="category">{t("A category")}</option>
+            <option value="brand">{t("A brand")}</option>
+            <option value="item">{t("One item")}</option>
           </select>
         </Field>
         {f.scope !== "all" && (
-          <Field label={f.scope === "category" ? "Category" : f.scope === "brand" ? "Brand" : "Item"} error={fe("scope_value")}>
+          <Field label={f.scope === "category" ? t("Category") : f.scope === "brand" ? t("Brand") : t("Item")} error={fe("scope_value")}>
             {f.scope === "brand" ? (
               <>
                 <input type="text" list="rule-brands" value={f.scope_value ?? ""} onChange={(e) => set("scope_value", e.target.value)} />
@@ -328,7 +312,7 @@ function EditRule({ profile, r, onClose }: { profile: Profile; r: Rule | null; o
               </>
             ) : (
               <select value={f.scope_value ?? ""} onChange={(e) => set("scope_value", e.target.value || null)}>
-                <option value="">Choose…</option>
+                <option value="">{t("Choose…")}</option>
                 {f.scope === "category"
                   ? cats.data?.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -345,26 +329,26 @@ function EditRule({ profile, r, onClose }: { profile: Profile; r: Rule | null; o
             )}
           </Field>
         )}
-        <Field label="Price by">
+        <Field label={t("Price by")}>
           <select value={f.method} onChange={(e) => set("method", e.target.value)}>
-            <option value="markup">Markup on cost (%)</option>
-            <option value="margin">Target margin (%)</option>
-            <option value="fixed">Fixed price</option>
+            <option value="markup">{t("Markup on cost (%)")}</option>
+            <option value="margin">{t("Target margin (%)")}</option>
+            <option value="fixed">{t("Fixed price")}</option>
           </select>
         </Field>
-        <Field label={f.method === "fixed" ? "Price" : "Percent"} error={fe("value")} hint={f.method === "markup" ? "40 → cost × 1.40" : f.method === "margin" ? "40 → profit is 40% of the price (cost ÷ 0.60)" : undefined}>
+        <Field label={f.method === "fixed" ? t("Price") : t("Percent")} error={fe("value")} hint={f.method === "markup" ? t("40 → cost × 1.40") : f.method === "margin" ? t("40 → profit is 40% of the price (cost ÷ 0.60)") : undefined}>
           <input type="text" inputMode="decimal" value={f.value} onChange={(e) => set("value", e.target.value)} />
         </Field>
-        <Field label="Priority" hint="Lower numbers are tried first.">
+        <Field label={t("Priority")} hint={t("Lower numbers are tried first.")}>
           <input type="number" value={f.priority} onChange={(e) => set("priority", Number(e.target.value))} />
         </Field>
-        <Field label="Only from quantity" error={fe("min_qty")} hint="For quantity breaks.">
+        <Field label={t("Only from quantity")} error={fe("min_qty")} hint={t("For quantity breaks.")}>
           <input type="number" min={1} value={f.min_qty} onChange={(e) => set("min_qty", Number(e.target.value))} />
         </Field>
-        <Field label="Minimum price (optional)" error={fe("min_price")}>
+        <Field label={t("Minimum price (optional)")} error={fe("min_price")}>
           <input type="text" inputMode="decimal" value={f.min_price ?? ""} onChange={(e) => set("min_price", e.target.value || null)} />
         </Field>
-        <Field label="Note">
+        <Field label={t("Note")}>
           <input type="text" value={f.note} onChange={(e) => set("note", e.target.value)} />
         </Field>
       </div>

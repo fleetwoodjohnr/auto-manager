@@ -10,6 +10,7 @@ import { bytes, date } from "../../lib/format";
 import { ImportManual, KIND_LABEL, indexInBackground } from "./ImportManual";
 import { Snippet, WhereIs } from "../vehicles/VehicleManuals";
 import { vehicleTitle } from "../vehicles/Garage";
+import { t, tx } from "../../i18n";
 
 export default function Library() {
   const { route, setTab, go } = useApp();
@@ -19,39 +20,36 @@ export default function Library() {
   const [editing, setEditing] = useState<Manual | null>(null);
   const [kind, setKind] = useState("");
   const refresh = useRefresh();
-  const del = useAction<{ id: string }>("manual_delete", { success: "Document deleted" });
+  const del = useAction<{ id: string }>("manual_delete", { success: t("Document deleted") });
   const { ask, dialog } = useConfirm();
   const links = (m: Manual) =>
     m.links.map((l) => l.vehicle_title ?? [l.year_from && l.year_to ? (l.year_from === l.year_to ? l.year_from : `${l.year_from}–${l.year_to}`) : l.year_from, l.make, l.model].filter(Boolean).join(" ")).join("; ");
   return (
     <div className="page wide">
       {dialog}
-      <PageHead title="Manuals & Documentation" sub="Owner's and service manuals, bulletins and diagrams you have, searchable and linked to your vehicles.">
+      <PageHead title={t("Manuals & Documentation")} sub={t("Owner's and service manuals, bulletins and diagrams you have, searchable and linked to your vehicles.")}>
         <button className="btn primary" onClick={() => setImporting(true)}>
-          <FileUp size={16} aria-hidden /> Import PDF
-        </button>
+          <FileUp size={16} aria-hidden />{" "}{t("Import PDF")}</button>
       </PageHead>
       <Tabs
-        label="Documentation"
+        label={t("Documentation")}
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: "library", label: "Library", count: q.data?.length },
-          { id: "search", label: "Search inside documents" },
-          { id: "where", label: "Where Is It?" },
+          { id: "library", label: t("Library"), count: q.data?.length },
+          { id: "search", label: t("Search inside documents") },
+          { id: "where", label: t("Where Is It?") },
         ]}
       />
       {tab === "library" && (
         <Loaded q={q}>
           {(list) =>
             list.length === 0 ? (
-              <Empty icon={<BookOpen size={20} />} title="No documents yet" action={<button className="btn primary" onClick={() => setImporting(true)}>Import a PDF</button>}>
-                Import manuals you own or downloaded from the manufacturer. Auto Manager never downloads or shares copyrighted manuals itself.
-              </Empty>
+              <Empty icon={<BookOpen size={20} />} title={t("No documents yet")} action={<button className="btn primary" onClick={() => setImporting(true)}>{t("Import a PDF")}</button>}>{t("Import manuals you own or downloaded from the manufacturer. Auto Manager never downloads or shares copyrighted manuals itself.")}</Empty>
             ) : (
               <div className="stack">
-                <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Document type" style={{ alignSelf: "flex-start" }}>
-                  <option value="">All types</option>
+                <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label={t("Document type")} style={{ alignSelf: "flex-start" }}>
+                  <option value="">{t("All types")}</option>
                   {Object.entries(KIND_LABEL).map(([k, l]) => (
                     <option key={k} value={k}>
                       {l}
@@ -59,23 +57,23 @@ export default function Library() {
                   ))}
                 </select>
                 <DataTable
-                  label="Documents"
+                  label={t("Documents")}
                   rows={list.filter((m) => !kind || m.kind === kind)}
                   rowKey={(m) => m.id}
                   onOpen={(m) => go({ page: "manual", id: m.id })}
                   height="calc(100vh - 330px)"
                   menu={(m) => [
-                    { label: "Open", run: () => go({ page: "manual", id: m.id }) },
-                    { label: "Edit details", run: () => setEditing(m) },
-                    !m.indexed ? { label: "Make searchable", run: () => indexInBackground(m, refresh) } : null,
+                    { label: t("Open"), run: () => go({ page: "manual", id: m.id }) },
+                    { label: t("Edit details"), run: () => setEditing(m) },
+                    !m.indexed ? { label: t("Make searchable"), run: () => indexInBackground(m, refresh) } : null,
                   ]}
                   columns={[
-                    { id: "title", label: "Title", width: "minmax(200px, 2fr)", render: (m) => m.title, sort: (m) => m.title },
-                    { id: "kind", label: "Type", width: "160px", render: (m) => KIND_LABEL[m.kind] ?? m.kind, sort: (m) => m.kind },
-                    { id: "for", label: "For", width: "minmax(140px, 1.5fr)", render: (m) => <span className="small">{links(m) || "—"}</span> },
-                    { id: "pages", label: "Pages", width: "70px", render: (m) => m.page_count ?? "", align: "right", sort: (m) => m.page_count ?? 0 },
-                    { id: "search", label: "Search", width: "110px", render: (m) => (m.indexed ? <Badge tone="ok">searchable</Badge> : <Badge tone="warn">not yet</Badge>) },
-                    { id: "size", label: "Size", width: "80px", render: (m) => bytes(m.file_size), align: "right", sort: (m) => m.file_size },
+                    { id: "title", label: t("Title"), width: "minmax(200px, 2fr)", render: (m) => m.title, sort: (m) => m.title },
+                    { id: "kind", label: t("Type"), width: "160px", render: (m) => KIND_LABEL[m.kind] ?? m.kind, sort: (m) => m.kind },
+                    { id: "for", label: t("For"), width: "minmax(140px, 1.5fr)", render: (m) => <span className="small">{links(m) || "—"}</span> },
+                    { id: "pages", label: t("Pages"), width: "70px", render: (m) => m.page_count ?? "", align: "right", sort: (m) => m.page_count ?? 0 },
+                    { id: "search", label: t("Search"), width: "110px", render: (m) => (m.indexed ? <Badge tone="ok">searchable</Badge> : <Badge tone="warn">{t("not yet")}</Badge>) },
+                    { id: "size", label: t("Size"), width: "80px", render: (m) => bytes(m.file_size), align: "right", sort: (m) => m.file_size },
                     {
                       id: "act",
                       label: "",
@@ -83,10 +81,10 @@ export default function Library() {
                       render: (m) => (
                         <ActionsMenu
                           items={[
-                            { label: "Edit details", icon: <Pencil size={14} />, run: () => setEditing(m) },
-                            { label: "Rebuild search text", icon: <RefreshCw size={14} />, run: () => indexInBackground(m, refresh) },
+                            { label: t("Edit details"), icon: <Pencil size={14} />, run: () => setEditing(m) },
+                            { label: t("Rebuild search text"), icon: <RefreshCw size={14} />, run: () => indexInBackground(m, refresh) },
                             null,
-                            { label: "Delete", icon: <Trash2 size={14} />, danger: true, run: async () => (await ask("Delete this document?", "The stored PDF, its search text, bookmarks and notes are removed.")) && del.mutate({ id: m.id }) },
+                            { label: t("Delete"), icon: <Trash2 size={14} />, danger: true, run: async () => (await ask(t("Delete this document?"), t("The stored PDF, its search text, bookmarks and notes are removed."))) && del.mutate({ id: m.id }) },
                           ]}
                         />
                       ),
@@ -120,22 +118,19 @@ function SearchDocs() {
           setQuery(text.trim());
         }}
       >
-        <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Words to find in every searchable document" style={{ flex: 1 }} aria-label="Search documents" />
+        <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder={t("Words to find in every searchable document")} style={{ flex: 1 }} aria-label={t("Search documents")} />
         <button className="btn primary" disabled={!text.trim()}>
-          <Search size={16} aria-hidden /> Search
-        </button>
+          <Search size={16} aria-hidden />{" "}{t("Search")}</button>
       </form>
-      {q.isFetching && <Spinner label="Searching" />}
+      {q.isFetching && <Spinner label={t("Searching")} />}
       {q.data &&
         (q.data.length === 0 ? (
-          <p className="muted">No page contains all of those words.</p>
+          <p className="muted">{t("No page contains all of those words.")}</p>
         ) : (
           <ul className="items" style={{ maxHeight: "none" }}>
             {q.data.map((h) => (
               <li key={`${h.manual_id}:${h.page}`} style={{ display: "block" }}>
-                <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: "manual", id: h.manual_id, arg: String(h.page) })}>
-                  {h.title}, page {h.page}
-                </button>
+                <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: "manual", id: h.manual_id, arg: String(h.page) })}>{tx("{0}, page {1}", h.title, h.page)}</button>
                 <div className="small muted">
                   <Snippet text={h.snippet} />
                 </div>
@@ -153,15 +148,15 @@ function WhereAny() {
   const v = vehicles.data?.find((x) => x.id === vid);
   return (
     <div className="stack">
-      <select value={vid} onChange={(e) => setVid(e.target.value)} aria-label="Vehicle" style={{ alignSelf: "flex-start" }}>
-        <option value="">Choose a saved vehicle…</option>
+      <select value={vid} onChange={(e) => setVid(e.target.value)} aria-label={t("Vehicle")} style={{ alignSelf: "flex-start" }}>
+        <option value="">{t("Choose a saved vehicle…")}</option>
         {vehicles.data?.map((x) => (
           <option key={x.id} value={x.id}>
             {vehicleTitle(x)}
           </option>
         ))}
       </select>
-      {v ? <WhereIs vehicle={v} /> : <p className="muted">Locations are looked up in the documents and notes linked to one vehicle.</p>}
+      {v ? <WhereIs vehicle={v} /> : <p className="muted">{t("Locations are looked up in the documents and notes linked to one vehicle.")}</p>}
     </div>
   );
 }
@@ -171,29 +166,25 @@ function EditManual({ m, onClose }: { m: Manual; onClose: () => void }) {
   const [links, setLinks] = useState(m.links);
   const vehicles = useCmd<Vehicle[]>("vehicle_list", { saved: true });
   const save = useAction<{ id: string; meta: ManualMeta }>("manual_update", { silentError: true });
-  const saveLinks = useAction<{ id: string; links: typeof links }>("manual_set_links", { success: "Saved", silentError: true });
+  const saveLinks = useAction<{ id: string; links: typeof links }>("manual_set_links", { success: t("Saved"), silentError: true });
   const err = save.error ?? saveLinks.error;
   return (
     <Modal
       open
-      title="Document details"
+      title={t("Document details")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={() => save.mutate({ id: m.id, meta }, { onSuccess: () => saveLinks.mutate({ id: m.id, links }, { onSuccess: onClose }) })}>
-            Save
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
+          <button className="btn primary" onClick={() => save.mutate({ id: m.id, meta }, { onSuccess: () => saveLinks.mutate({ id: m.id, links }, { onSuccess: onClose }) })}>{t("Save")}</button>
         </>
       }
     >
-      <Field label="Title">
+      <Field label={t("Title")}>
         <input type="text" value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })} />
       </Field>
       <div className="grid two">
-        <Field label="Type">
+        <Field label={t("Type")}>
           <select value={meta.kind} onChange={(e) => setMeta({ ...meta, kind: e.target.value })}>
             {Object.entries(KIND_LABEL).map(([k, l]) => (
               <option key={k} value={k}>
@@ -202,35 +193,33 @@ function EditManual({ m, onClose }: { m: Manual; onClose: () => void }) {
             ))}
           </select>
         </Field>
-        <Field label="Publisher">
+        <Field label={t("Publisher")}>
           <input type="text" value={meta.publisher} onChange={(e) => setMeta({ ...meta, publisher: e.target.value })} />
         </Field>
       </div>
-      <Field label="Source link">
+      <Field label={t("Source link")}>
         <input type="url" value={meta.source_url} onChange={(e) => setMeta({ ...meta, source_url: e.target.value })} />
       </Field>
-      <p className="label">Applies to</p>
+      <p className="label">{t("Applies to")}</p>
       {links.map((l, i) => (
         <div key={i} className="row">
-          <span className="flex-1">{l.vehicle_id ? (vehicles.data?.find((v) => v.id === l.vehicle_id) ? vehicleTitle(vehicles.data.find((v) => v.id === l.vehicle_id)!) : "A vehicle") : [l.year_from, l.year_to && l.year_to !== l.year_from ? `–${l.year_to}` : "", l.make, l.model].filter(Boolean).join(" ")}</span>
-          <button className="btn link" onClick={() => setLinks(links.filter((_, j) => j !== i))}>
-            Remove
-          </button>
+          <span className="flex-1">{l.vehicle_id ? (vehicles.data?.find((v) => v.id === l.vehicle_id) ? vehicleTitle(vehicles.data.find((v) => v.id === l.vehicle_id)!) : t("A vehicle")) : [l.year_from, l.year_to && l.year_to !== l.year_from ? `–${l.year_to}` : "", l.make, l.model].filter(Boolean).join(" ")}</span>
+          <button className="btn link" onClick={() => setLinks(links.filter((_, j) => j !== i))}>{t("Remove")}</button>
         </div>
       ))}
       <select
         value=""
-        aria-label="Link to a vehicle"
+        aria-label={t("Link to a vehicle")}
         onChange={(e) => e.target.value && setLinks([...links, { vehicle_id: e.target.value, vehicle_title: null, make: null, model: null, year_from: null, year_to: null }])}
       >
-        <option value="">Link to a saved vehicle…</option>
+        <option value="">{t("Link to a saved vehicle…")}</option>
         {vehicles.data?.map((v) => (
           <option key={v.id} value={v.id}>
             {vehicleTitle(v)}
           </option>
         ))}
       </select>
-      <p className="small muted">Imported {date(m.created_at)} · {m.file_name}</p>
+      <p className="small muted">{tx("Imported {0} · {1}", date(m.created_at), m.file_name)}</p>
       {err != null && <div className="notice bad">{String((err as { message?: string }).message ?? err)}</div>}
     </Modal>
   );

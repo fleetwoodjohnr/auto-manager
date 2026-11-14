@@ -8,6 +8,7 @@ import { useApp } from "../../store";
 import { Badge, Empty, ErrorNote, Loaded, Spinner } from "../../ui";
 import { ImportManual } from "../manuals/ImportManual";
 import { OemLinks } from "../manuals/OemLinks";
+import { t, tx } from "../../i18n";
 
 function Snippet({ text }: { text: string }) {
   const parts = text.split(/(\[\[.*?\]\])/g);
@@ -26,17 +27,14 @@ export default function VehicleManuals({ vehicle }: { vehicle: Vehicle }) {
     <div className="grid two" style={{ alignItems: "start" }}>
       <section className="card">
         <div className="spread">
-          <h2>Documents for this vehicle</h2>
+          <h2>{t("Documents for this vehicle")}</h2>
           <button className="btn" onClick={() => setImporting(true)}>
-            <Upload size={16} aria-hidden /> Import PDF
-          </button>
+            <Upload size={16} aria-hidden />{" "}{t("Import PDF")}</button>
         </div>
         <Loaded q={q}>
           {(list) =>
             list.length === 0 ? (
-              <Empty icon={<BookOpen size={20} />} title="No documents linked yet">
-                Import an owner's or service manual you have, or find one on the manufacturer's site below.
-              </Empty>
+              <Empty icon={<BookOpen size={20} />} title={t("No documents linked yet")}>{t("Import an owner's or service manual you have, or find one on the manufacturer's site below.")}</Empty>
             ) : (
               <ul className="items" style={{ maxHeight: "none" }}>
                 {list.map((m) => (
@@ -47,7 +45,7 @@ export default function VehicleManuals({ vehicle }: { vehicle: Vehicle }) {
                     </button>
                     <span className="ml-auto row">
                       <Badge>{m.kind.replace("_", " ")}</Badge>
-                      {!m.indexed && <Badge tone="warn">not searchable yet</Badge>}
+                      {!m.indexed && <Badge tone="warn">{t("not searchable yet")}</Badge>}
                     </span>
                   </li>
                 ))}
@@ -74,8 +72,7 @@ export function WhereIs({ vehicle }: { vehicle: Vehicle }) {
   return (
     <section className="card">
       <h2>
-        <MapPin size={16} aria-hidden /> Where Is It?
-      </h2>
+        <MapPin size={16} aria-hidden />{" "}{t("Where Is It?")}</h2>
       <form
         className="row"
         onSubmit={(e) => {
@@ -83,35 +80,30 @@ export function WhereIs({ vehicle }: { vehicle: Vehicle }) {
           setAsked(text.trim());
         }}
       >
-        <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. starter motor, cabin filter, fuse box" aria-label="Component" style={{ flex: 1 }} />
+        <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder={t("e.g. starter motor, cabin filter, fuse box")} aria-label={t("Component")} style={{ flex: 1 }} />
         <button className="btn primary" disabled={!text.trim()}>
-          <Search size={16} aria-hidden /> Find
-        </button>
+          <Search size={16} aria-hidden />{" "}{t("Find")}</button>
       </form>
-      <p className="small muted mt-1">Searches only your documents and notes for this vehicle. Auto Manager never makes up locations or procedures.</p>
-      {q.isFetching && <Spinner label="Searching" />}
+      <p className="small muted mt-1">{t("Searches only your documents and notes for this vehicle. Auto Manager never makes up locations or procedures.")}</p>
+      {q.isFetching && <Spinner label={t("Searching")} />}
       {q.isError && <ErrorNote error={q.error} />}
       {w && (
         <div className="stack mt-2">
           {w.saved.map((a) => (
             <div key={a.id} className="notice ok">
-              <strong>{a.label}</strong>: {a.body || "location recorded"}
+              <strong>{a.label}</strong>: {a.body || t("location recorded")}
               <div className="small">
-                <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: "manual", id: a.manual_id, arg: String(a.page) })}>
-                  {a.manual_title}, page {a.page}
-                </button>
+                <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: "manual", id: a.manual_id, arg: String(a.page) })}>{tx("{0}, page {1}", a.manual_title, a.page)}</button>
               </div>
             </div>
           ))}
           {w.pages.length > 0 && (
             <div>
-              <p className="label">Mentioned in your documents</p>
+              <p className="label">{t("Mentioned in your documents")}</p>
               <ul className="items" style={{ maxHeight: "none" }}>
                 {w.pages.map((p) => (
                   <li key={`${p.manual_id}:${p.page}`} style={{ display: "block" }}>
-                    <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: "manual", id: p.manual_id, arg: String(p.page) })}>
-                      {p.title}, page {p.page}
-                    </button>
+                    <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: "manual", id: p.manual_id, arg: String(p.page) })}>{tx("{0}, page {1}", p.title, p.page)}</button>
                     <div className="small muted">
                       <Snippet text={p.snippet} />
                     </div>
@@ -122,14 +114,11 @@ export function WhereIs({ vehicle }: { vehicle: Vehicle }) {
           )}
           {w.install_notes.map((n) => (
             <div key={n.part_id} className="notice">
-              <strong>Installation notes on {n.part_name}:</strong> <span style={{ whiteSpace: "pre-wrap" }}>{n.notes}</span>
+              <strong>{tx("Installation notes on {0}:", n.part_name)}</strong> <span style={{ whiteSpace: "pre-wrap" }}>{n.notes}</span>
             </div>
           ))}
           {nothing && (
-            <div className="notice warn">
-              No location for “{w.component}” is recorded for this vehicle{w.searched_documents === 0 ? ", and none of its documents are searchable yet" : ` in ${w.searched_documents} searchable document${w.searched_documents === 1 ? "" : "s"}`}. Import the service manual, or open a document
-              and save the page as a component location once you find it.
-            </div>
+            <div className="notice warn">{tx("No location for “{0}” is recorded for this vehicle{1}. Import the service manual, or open a document and save the page as a component location once you find it.", w.component, w.searched_documents === 0 ? t(", and none of its documents are searchable yet") : t(" in {0} searchable document{1}", w.searched_documents, w.searched_documents === 1 ? "" : "s"))}</div>
           )}
         </div>
       )}

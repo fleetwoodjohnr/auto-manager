@@ -3,7 +3,7 @@
 ```
 auto-manager/
   crates/core/     auto-manager-core: all domain logic, SQLite, providers, imports, reports.
-                   No Tauri dependency, so it's tested directly with `cargo test` (223 tests).
+                   No Tauri dependency, so it's tested directly with `cargo test` (255 tests).
   crates/obd/      auto-manager-obd: read-only ELM327 OBD-II client (serial transport + parsers).
   src-tauri/       The desktop shell: thin #[tauri::command] adapters over the core, the
                    updater, and build.rs, which generates the IPC allow-list.
@@ -55,15 +55,19 @@ auto-manager/
 
 ## Sync
 
-Optional and account-free. **Encrypted bundles** carry a complete copy of the data, as a passphrase-encrypted backup, to another computer through a folder or a USB stick. This is a move, not a merge.
+Optional and account-free (`crates/core/src/folder_sync.rs`). Computers share a folder that something else keeps in step: Syncthing, Dropbox, OneDrive, a network share, or a USB stick carried between them.
 
-Two-way sync would need:
+- **Change tracking.** Triggers on every synced table record the row's key in `sync_log` with a hybrid logical clock (milliseconds that never go backwards and move past any clock seen from another computer). Changes applied from other computers are written with the triggers switched off (`sync_clock.applying`), with the other computer's version.
+- **Publishing.** Each computer writes one file, `devices/<id>.amstate`: its complete state (every row and deletion it knows, with versions), deflated and sealed with ChaCha20-Poly1305 under the group key. The key is derived with Argon2id from the passphrase and the group's salt (`auto-manager-sync.json`, which also holds a check value so a wrong passphrase is refused). Documents and photos travel as `files/<sha256>`, encrypted the same way.
+- **Merging.** Syncing reads the other computers' files and keeps, per row, the highest (clock, computer id): the latest change wins, per record. Deletions are tombstones. Child rows without their own key (a document's vehicle links and page text, an OBD session's readings) travel with their parent.
+- **Repairs** a row-by-row merge can't do, all deterministic so every computer reaches the same result:
+  - references to rows deleted elsewhere: cleared or removed as the database's own `ON DELETE` rule would, or a protected parent (a part still stocked) is kept;
+  - the same VIN, SKU, document, location, profile or category added on two computers: merged into the older row, with references moved (`sync_aliases`);
+  - job, invoice and purchase-order numbers used twice: the later row takes the next number;
+  - stock: levels are recomputed from the movement ledger and active reservations. If two computers took the same last units, one correction movement (with an id derived from the movements, so every computer makes the same one) brings it to zero and is reported for counting; over-reservations release the newest reservation. Costs are replayed from the ledger for items whose movements arrived;
+  - a job completed on two computers: its stock movements have ids derived from the reservation or job line, so they're the same row, deducted once.
 
-- a change log (the `audit_events` table and per-row `updated_at` are the starting points);
-- conflict rules (last-writer-wins per field for records; ledger rows are append-only and merge naturally, but stock levels must be recomputed from the merged ledger);
-- end-to-end encryption to a store the user chooses.
-
-The stable UUIDv7 ids and the append-only ledger were chosen so this can be added without migrating identifiers. It isn't implemented.
+Device-local data isn't synced: settings, the audit history, cached provider answers, the bundled code reference. Every computer must run the same data version; a newer or older one is skipped with a message. **Encrypted bundles** remain for a one-way full copy.
 
 ## OBD-II
 

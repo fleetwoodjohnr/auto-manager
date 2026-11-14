@@ -1,0 +1,4 @@
+Text detection and recognition models from the ocrs project (https://github.com/robertknight/ocrs-models),
+by Robert Knight, trained on the HierText dataset (Google Research).
+Licensed under the Creative Commons Attribution-ShareAlike 4.0 International license:
+https://creativecommons.org/licenses/by-sa/4.0/

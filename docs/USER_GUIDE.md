@@ -12,6 +12,7 @@ Press **Ctrl K** (⌘K on a Mac) anywhere to search everything. **Alt 1–9** an
 - **Decode** asks NHTSA's free vPIC service. You'll see what NHTSA knows, and a line naming what it *doesn't* provide for this VIN (for example drivetrain, or oil capacity). Nothing is guessed.
 - Use `*` for characters you can't read (a partial VIN). Partial lookups are shown but not saved.
 - **Without a VIN**: for pre-1981, non-US or off-road vehicles, or when you're offline. Enter the year, make and model (makes and models are suggested when online) and anything else you know.
+- **Scan…**: read the VIN with the camera or from a photo, either the plate at the base of the windshield or the barcode on the driver's door-jamb label. A VIN is only offered when its check digit is right; if one character looked ambiguous (S or 5, B or 8…) the suggestion says which, so check it against the vehicle.
 - **Many VINs (CSV)**: pick a spreadsheet and its VIN column. VINs are decoded 50 at a time, and identified vehicles can be saved straight to My Vehicles.
 
 **Save vehicle** puts it in **My Vehicles** (the garage). Unsaved lookups stay under *Recent lookups*.
@@ -36,8 +37,10 @@ Open a vehicle. Its tabs:
   - engine, transmission and fuel economy from the EPA.
 
   Pick the body style or configuration that matches.
-- **Recalls & Safety**: NHTSA recall campaigns for this year, make and model, and the NHTSA 5-Star ratings. Campaigns are listed per *model*. Check the VIN on [nhtsa.gov/recalls](https://www.nhtsa.gov/recalls), then record the answer for each campaign: outstanding, completed, or doesn't apply.
-- **Maintenance**: service intervals from the owner's manual, service history, and what's due (also shown on the Dashboard).
+
+  **Find values in your manuals** reads the documents linked to this vehicle (see Manuals) for torque, fluid capacities, oil grade, tire pressures, wheel-nut torque, brake fluid, battery group and spark-plug gap. Each value is shown with the words around it and its page; choose **Use this value** to save it as "From a manual" with the page cited.
+- **Recalls & Safety**: NHTSA recall campaigns for this year, make and model, the manufacturer's **technical service bulletins** NHTSA lists for the model (search them by number, component or words; open a bulletin's PDF on NHTSA or **Add to library** to keep it with the vehicle's documents), and the NHTSA 5-Star ratings. Campaigns are listed per *model*. Check the VIN on [nhtsa.gov/recalls](https://www.nhtsa.gov/recalls), then record the answer for each campaign: outstanding, completed, or doesn't apply.
+- **Maintenance**: service intervals from the owner's manual (**Find intervals in your manuals** offers the "every … miles or … months" lines it finds, with their page), service history, and what's due (also shown on the Dashboard).
 - **Service History**: estimates, jobs and invoices for the vehicle, and its parts lists.
 
 To edit the nickname, plate, mileage, purchase details, notes or owner, use **⋯ → Edit details**.
@@ -99,7 +102,9 @@ Other tabs on the Inventory page:
 - **Reorder & purchasing**: what to order (see below), and purchase orders.
 - **Reservations**: everything held, and what it's held for.
 - **Physical count**: enter what's on the shelves; the differences are recorded.
-- **Scan**: a USB barcode scanner (or typing) finds the item.
+- **Scan**: a USB barcode scanner (or typing) finds the item; **Camera…** reads a barcode or QR code with the camera or from a photo.
+
+**Items sold by volume, length or weight.** In an item's details, set its **Unit** (L, qt, gal, ft, m, kg…) and tick **Sold in parts of a unit**. Its stock, counts, reservations, orders and job lines then take amounts such as 4.5 or 0.25. Items without the tick take whole numbers only.
 
 **Import** takes a CSV or Excel sheet. You match its columns, review every row (duplicate SKUs and problems are shown), then import it all in one step.
 
@@ -150,13 +155,14 @@ The **Data Quality Center** lists things worth fixing:
 
 ## Settings and your data
 
-- **General**: theme, units (shown converted; stored as the source gave them), date format, currency, start page, dashboard sections.
+- **General**: theme, **language** (English, Español, Français; the window restarts in the new language), units (shown converted; stored as the source gave them), date format, currency, start page, dashboard sections.
 - **Vehicle data**: sources and their priority, and the offline cache.
 - **Inventory**: locations, valuation (average or last cost), minimum stock, label barcode type.
 - **Pricing**: the default profile.
 - **Data and backups**:
   - daily automatic backups (14 kept), back up now or to a file, restore (always verified first, and the current data is backed up before it's replaced);
-  - **Move to another computer**: an encrypted bundle protected by your passphrase;
+  - **Sync between computers**: choose a folder all the computers can see (Syncthing, Dropbox, OneDrive, a network share, or a USB stick you move between them) and a passphrase, the same on every computer. Each computer then syncs on start and every 5 minutes (or with **Sync now**). Everything in the folder is encrypted. When two computers change the same record before syncing, the later change wins; when they both used the same stock or the same invoice number, Auto Manager corrects it and lists what it did, so you can count the item or check the invoice;
+  - **Move to another computer**: an encrypted bundle protected by your passphrase (a one-way full copy);
   - export inventory as CSV or Excel, or everything as JSON;
   - check the database.
 - **Updates**: current version, Check for Updates, release notes, download, restart and install, automatic checks and downloads, stable or beta channel. Updates never install without you.

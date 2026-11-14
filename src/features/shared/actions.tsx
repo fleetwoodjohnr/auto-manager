@@ -6,6 +6,7 @@ import { useApp, toast } from "../../store";
 import { Field, Modal, Spinner } from "../../ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateData } from "../../api/queries";
+import { t, tx } from "../../i18n";
 
 /** Reserve stock of an item, optionally for a vehicle. */
 export function ReserveDialog({ item, vehicleId, onClose }: { item: { id: string; sku: string; available: number } | null; vehicleId?: string; onClose: () => void }) {
@@ -13,36 +14,32 @@ export function ReserveDialog({ item, vehicleId, onClose }: { item: { id: string
   const [note, setNote] = useState("");
   const reserve = useAction<{ input: unknown }, Reservation>("stock_reserve", {
     success: (r) => `Reserved ${r.qty} × ${r.sku}`,
-    undo: (r) => () => void call("stock_release", { id: r.id }).then(() => toast("Reservation released")),
+    undo: (r) => () => void call("stock_release", { id: r.id }).then(() => toast(t("Reservation released"))),
     silentError: true,
   });
   const err = reserve.error;
   return (
     <Modal
       open={!!item}
-      title={`Reserve ${item?.sku ?? ""}`}
+      title={t("Reserve {0}", item?.sku ?? "")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
           <button
             className="btn primary"
             disabled={reserve.isPending}
             onClick={() => item && reserve.mutate({ input: { item_id: item.id, location_id: null, qty: Number(qty), vehicle_id: vehicleId ?? null, job_id: null, line_id: null, note } }, { onSuccess: onClose })}
-          >
-            Reserve
-          </button>
+          >{t("Reserve")}</button>
         </>
       }
     >
-      <p className="muted">{item?.available} available. Reserved stock stays on the shelf but can't be sold or used elsewhere until you release it.</p>
-      <Field label="Quantity" error={err && errorField(err) === "qty" ? errorMessage(err) : null}>
+      <p className="muted">{tx("{0} available. Reserved stock stays on the shelf but can't be sold or used elsewhere until you release it.", item?.available)}</p>
+      <Field label={t("Quantity")} error={err && errorField(err) === "qty" ? errorMessage(err) : null}>
         <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
       </Field>
-      <Field label="Note (optional)">
-        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Customer picking up Friday" />
+      <Field label={t("Note (optional)")}>
+        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("e.g. Customer picking up Friday")} />
       </Field>
       {err != null && errorField(err) !== "qty" && <div className="notice bad">{errorMessage(err)}</div>}
     </Modal>
@@ -68,7 +65,7 @@ export function AddToEstimate({ item, vehicleId, onClose }: { item: { id: string
       if (id === "new") id = (await call<JobDetail>("job_create", { input: { vehicle_id: vehicleId ?? null, title: "" } })).job.id;
       const d = await call<JobDetail>("job_add_part", { id, input: { item_id: item.id, qty, reserve } });
       void invalidateData(qc);
-      toast(`Added to estimate #${d.job.number}`, { action: { label: "Open", run: () => go({ page: "job", id }) } });
+      toast(t("Added to estimate #{0}", d.job.number), { action: { label: t("Open"), run: () => go({ page: "job", id }) } });
       onClose();
     } catch (e) {
       setError(errorMessage(e));
@@ -79,25 +76,22 @@ export function AddToEstimate({ item, vehicleId, onClose }: { item: { id: string
   return (
     <Modal
       open={!!item}
-      title="Add to estimate"
+      title={t("Add to estimate")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
           <button className="btn primary" disabled={busy} onClick={add}>
-            {busy && <Spinner />} Add
-          </button>
+            {busy && <Spinner />}{" "}{t("Add")}</button>
         </>
       }
     >
       <p>
         <strong>{item?.name}</strong>
       </p>
-      <Field label="Estimate">
+      <Field label={t("Estimate")}>
         <select value={jobId} onChange={(e) => setJobId(e.target.value)}>
-          <option value="new">New estimate{vehicleId ? " for this vehicle" : ""}</option>
+          <option value="new">{tx("New estimate{0}", vehicleId ? t(" for this vehicle") : "")}</option>
           {jobs.data?.map((j) => (
             <option key={j.id} value={j.id}>
               #{j.number} {j.title || j.vehicle_title || ""} ({j.status.replace("_", " ")})
@@ -105,12 +99,11 @@ export function AddToEstimate({ item, vehicleId, onClose }: { item: { id: string
           ))}
         </select>
       </Field>
-      <Field label="Quantity">
+      <Field label={t("Quantity")}>
         <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
       </Field>
       <label className="check">
-        <input type="checkbox" checked={reserve} onChange={(e) => setReserve(e.target.checked)} /> Reserve the stock for this estimate now
-      </label>
+        <input type="checkbox" checked={reserve} onChange={(e) => setReserve(e.target.checked)} />{" "}{t("Reserve the stock for this estimate now")}</label>
       {error && <div className="notice bad">{error}</div>}
     </Modal>
   );
@@ -129,10 +122,10 @@ export function AddToList({ part, vehicleId, onClose }: { part: { id: string; na
     setError(null);
     try {
       let id = listId;
-      if (id === "new") id = (await call<PartList>("plist_create", { name: name || "Shopping list", vehicleId: vehicleId ?? null })).id;
+      if (id === "new") id = (await call<PartList>("plist_create", { name: name || t("Shopping list"), vehicleId: vehicleId ?? null })).id;
       await call("plist_add", { listId: id, partId: part.id, qty: Number(qty), note: null });
       qc.invalidateQueries({ queryKey: ["plist_list"] });
-      toast("Added to the list");
+      toast(t("Added to the list"));
       onClose();
     } catch (e) {
       setError(errorMessage(e));
@@ -141,25 +134,21 @@ export function AddToList({ part, vehicleId, onClose }: { part: { id: string; na
   return (
     <Modal
       open={!!part}
-      title="Save to a parts list"
+      title={t("Save to a parts list")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={add}>
-            Save
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
+          <button className="btn primary" onClick={add}>{t("Save")}</button>
         </>
       }
     >
       <p>
         <strong>{part?.name}</strong>
       </p>
-      <Field label="List">
+      <Field label={t("List")}>
         <select value={listId} onChange={(e) => setListId(e.target.value)}>
-          <option value="new">New list…</option>
+          <option value="new">{t("New list…")}</option>
           {lists.data?.map((l) => (
             <option key={l.id} value={l.id}>
               {l.name} {l.vehicle_title ? `(${l.vehicle_title})` : ""}
@@ -168,11 +157,11 @@ export function AddToList({ part, vehicleId, onClose }: { part: { id: string; na
         </select>
       </Field>
       {listId === "new" && (
-        <Field label="List name">
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Front brake job" autoFocus />
+        <Field label={t("List name")}>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("e.g. Front brake job")} autoFocus />
         </Field>
       )}
-      <Field label="Quantity">
+      <Field label={t("Quantity")}>
         <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
       </Field>
       {error && <div className="notice bad">{error}</div>}

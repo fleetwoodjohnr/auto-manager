@@ -5,15 +5,16 @@ import { call } from "../../api/ipc";
 import type { Hit, SearchResult } from "../../api/types";
 import { useApp, type Route } from "../../store";
 import { useSettings } from "../../settings";
+import { t } from "../../i18n";
 
 const KIND: Record<string, { label: string; icon: typeof Car; page: Route["page"] }> = {
-  vehicle: { label: "Vehicles", icon: Car, page: "vehicle" },
-  part: { label: "Parts", icon: Cog, page: "part" },
-  item: { label: "Inventory", icon: Boxes, page: "item" },
-  manual: { label: "Manuals", icon: BookOpen, page: "manual" },
-  supplier: { label: "Suppliers", icon: Truck, page: "suppliers" },
-  customer: { label: "Customers", icon: User, page: "customers" },
-  job: { label: "Service jobs", icon: Wrench, page: "job" },
+  vehicle: { label: t("Vehicles"), icon: Car, page: "vehicle" },
+  part: { label: t("Parts"), icon: Cog, page: "part" },
+  item: { label: t("Inventory"), icon: Boxes, page: "item" },
+  manual: { label: t("Manuals"), icon: BookOpen, page: "manual" },
+  supplier: { label: t("Suppliers"), icon: Truck, page: "suppliers" },
+  customer: { label: t("Customers"), icon: User, page: "customers" },
+  job: { label: t("Service jobs"), icon: Wrench, page: "job" },
 };
 
 export function routeFor(hit: Hit): Route {
@@ -79,14 +80,14 @@ export default function GlobalSearch() {
     const r = data.route;
     options.push({
       key: "direct",
-      label: r.kind === "vin" ? (r.vehicle_id ? `Open vehicle ${r.vin}` : `Look up VIN ${r.vin}`) : r.kind === "part" ? "Open this part number" : "Open this stock item",
-      sub: "Exact match",
+      label: r.kind === "vin" ? (r.vehicle_id ? t("Open vehicle {0}", r.vin) : t("Look up VIN {0}", r.vin)) : r.kind === "part" ? t("Open this part number") : t("Open this stock item"),
+      sub: t("Exact match"),
       icon: r.kind === "vin" ? ScanSearch : r.kind === "part" ? Cog : Boxes,
       run: () => finish(direct),
     });
   }
   hits.forEach((h) => options.push({ key: `${h.kind}:${h.id}`, label: h.title, sub: h.subtitle, icon: KIND[h.kind]?.icon ?? Search, run: () => finish(routeFor(h)) }));
-  recents.forEach((r) => options.push({ key: `recent:${r}`, label: r, sub: "Recent search", icon: History, run: () => setQ(r) }));
+  recents.forEach((r) => options.push({ key: `recent:${r}`, label: r, sub: t("Recent search"), icon: History, run: () => setQ(r) }));
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -114,8 +115,8 @@ export default function GlobalSearch() {
         ref={input}
         type="search"
         value={q}
-        placeholder="Search VIN, vehicle, part number, SKU…"
-        aria-label="Search everything"
+        placeholder={t("Search VIN, vehicle, part number, SKU…")}
+        aria-label={t("Search everything")}
         aria-expanded={showing}
         aria-controls={showing ? "search-results" : undefined}
         aria-activedescendant={showing && options[active] ? `sr-${active}` : undefined}
@@ -129,12 +130,12 @@ export default function GlobalSearch() {
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={onKey}
       />
-      {!q && <kbd aria-hidden>{mac ? "⌘K" : "Ctrl K"}</kbd>}
+      {!q && <kbd aria-hidden>{mac ? "⌘K" : t("Ctrl K")}</kbd>}
       {showing && (
-        <div className="results" id="search-results" role="listbox" aria-label="Search results">
+        <div className="results" id="search-results" role="listbox" aria-label={t("Search results")}>
           {options.map((o, i) => {
             const group = o.key.split(":")[0];
-            const header = group !== lastGroup && group !== "direct" ? (KIND[group]?.label ?? (group === "recent" ? "Recent searches" : "")) : "";
+            const header = group !== lastGroup && group !== "direct" ? (KIND[group]?.label ?? (group === "recent" ? t("Recent searches") : "")) : "";
             lastGroup = group;
             const Icon = o.icon;
             return (
@@ -149,12 +150,10 @@ export default function GlobalSearch() {
             );
           })}
           {data && options.length === 0 && (
-            <div className="p-3 small muted">
-              Nothing found for “{dq}”.
+            <div className="p-3 small muted">{t("Nothing found for “")}{dq}”.
               {data.suggestion && (
                 <>
-                  {" "}
-                  Did you mean{" "}
+                  {" "}{t("Did you mean")}{" "}
                   <button className="btn link" style={{ display: "inline", width: "auto", padding: 0 }} onMouseDown={(e) => e.preventDefault()} onClick={() => setQ(data.suggestion!)}>
                     {data.suggestion}
                   </button>

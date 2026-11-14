@@ -6,6 +6,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { call, errorMessage } from "../../api/ipc";
 import type { AppInfo, Settings, UpdateInfo, UpdateProgress } from "../../api/types";
 import { useApp } from "../../store";
+import { t } from "../../i18n";
 
 interface UpdateState {
   checking: boolean;
@@ -57,7 +58,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     }
   },
   installAndRestart: async () => {
-    if (useApp.getState().dirty && !(await ask("You have unsaved changes. Install the update and restart anyway?", { title: "Auto Manager", kind: "warning" }))) return;
+    if (useApp.getState().dirty && !(await ask(t("You have unsaved changes. Install the update and restart anyway?"), { title: t("Auto Manager"), kind: "warning" }))) return;
     try {
       await call("update_install");
       await relaunch();

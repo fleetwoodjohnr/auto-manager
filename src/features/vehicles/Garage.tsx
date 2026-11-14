@@ -9,8 +9,9 @@ import { useSettings } from "../../settings";
 import { Badge, Empty, Loaded, Modal, PageHead, Tabs } from "../../ui";
 import { ago } from "../../lib/format";
 import { showValue, type UnitSystem } from "../../lib/units";
+import { t, tx } from "../../i18n";
 
-export const vehicleTitle = (v: Pick<Vehicle, "year" | "make" | "model" | "trim">) => [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ") || "Unidentified vehicle";
+export const vehicleTitle = (v: Pick<Vehicle, "year" | "make" | "model" | "trim">) => [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ") || t("Unidentified vehicle");
 
 export default function Garage() {
   const { route, go, setTab } = useApp();
@@ -22,29 +23,27 @@ export default function Garage() {
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id].slice(-4)));
   return (
     <div className="page wide">
-      <PageHead title="My Vehicles" sub="Your garage: saved vehicles, their specifications, parts, manuals and service history.">
+      <PageHead title={t("My Vehicles")} sub={t("Your garage: saved vehicles, their specifications, parts, manuals and service history.")}>
         {picked.length >= 2 && (
           <button className="btn" onClick={() => setComparing(true)}>
-            <Columns3 size={16} aria-hidden /> Compare {picked.length}
+            <Columns3 size={16} aria-hidden />{" "}{t("Compare")}{" "}{picked.length}
           </button>
         )}
         <button className="btn" onClick={() => go({ page: "lookup", tab: "manual" })}>
-          <Plus size={16} aria-hidden /> Add by hand
-        </button>
+          <Plus size={16} aria-hidden />{" "}{t("Add by hand")}</button>
         <button className="btn primary" onClick={() => go("lookup")}>
-          <ScanSearch size={16} aria-hidden /> Look up a VIN
-        </button>
+          <ScanSearch size={16} aria-hidden />{" "}{t("Look up a VIN")}</button>
       </PageHead>
       <Tabs
-        label="Vehicles"
+        label={t("Vehicles")}
         value={tab}
         onChange={(t) => {
           setTab(t);
           setPicked([]);
         }}
         tabs={[
-          { id: "saved", label: "Saved" },
-          { id: "recent", label: "Recent lookups" },
+          { id: "saved", label: t("Saved") },
+          { id: "recent", label: t("Recent lookups") },
         ]}
       />
       <Loaded q={q}>
@@ -53,16 +52,16 @@ export default function Garage() {
           const shown = f ? list.filter((v) => [vehicleTitle(v), v.vin, v.nickname, v.plate, v.color].join(" ").toLowerCase().includes(f)) : list;
           if (list.length === 0) {
             return (
-              <Empty icon={<Car size={20} />} title={tab === "saved" ? "No saved vehicles yet" : "No recent lookups"} action={<button className="btn primary" onClick={() => go("lookup")}>Look up a vehicle</button>}>
-                {tab === "saved" ? "Decode a VIN and choose Save, or add an older vehicle by hand." : "Vehicles you decode appear here until you save them."}
+              <Empty icon={<Car size={20} />} title={tab === "saved" ? t("No saved vehicles yet") : t("No recent lookups")} action={<button className="btn primary" onClick={() => go("lookup")}>{t("Look up a vehicle")}</button>}>
+                {tab === "saved" ? t("Decode a VIN and choose Save, or add an older vehicle by hand.") : t("Vehicles you decode appear here until you save them.")}
               </Empty>
             );
           }
           return (
             <>
               <div className="row mb-3">
-                <input type="search" placeholder="Filter by name, VIN, plate…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter vehicles" style={{ width: 320 }} />
-                <span className="small muted">{shown.length} vehicles · tick up to 4 to compare</span>
+                <input type="search" placeholder={t("Filter by name, VIN, plate…")} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t("Filter vehicles")} style={{ width: 320 }} />
+                <span className="small muted">{tx("{0} vehicles · tick up to 4 to compare", shown.length)}</span>
               </div>
               <div className="garage">
                 {shown.map((v) => (
@@ -75,9 +74,9 @@ export default function Garage() {
                         {v.model} {v.trim}
                       </span>
                       {v.nickname && <span>“{v.nickname}”</span>}
-                      <span className="small muted">{[v.engine, v.transmission].filter(Boolean).join(" · ") || "Engine unknown"}</span>
+                      <span className="small muted">{[v.engine, v.transmission].filter(Boolean).join(" · ") || t("Engine unknown")}</span>
                       <span className="row small muted">
-                        {v.vin ? <span className="mono">{v.vin}</span> : <Badge>No VIN</Badge>}
+                        {v.vin ? <span className="mono">{v.vin}</span> : <Badge>{t("No VIN")}</Badge>}
                         {v.plate && <Badge>{v.plate}</Badge>}
                         {v.mileage != null && (
                           <span>
@@ -85,10 +84,10 @@ export default function Garage() {
                           </span>
                         )}
                       </span>
-                      {tab === "recent" && <span className="small muted">Looked up {ago(v.last_viewed_at)}</span>}
+                      {tab === "recent" && <span className="small muted">{tx("Looked up {0}", ago(v.last_viewed_at))}</span>}
                     </button>
-                    <label className="absolute" style={{ top: 10, right: 10 }} title="Select to compare">
-                      <input type="checkbox" checked={picked.includes(v.id)} onChange={() => toggle(v.id)} aria-label={`Compare ${vehicleTitle(v)}`} />
+                    <label className="absolute" style={{ top: 10, right: 10 }} title={t("Select to compare")}>
+                      <input type="checkbox" checked={picked.includes(v.id)} onChange={() => toggle(v.id)} aria-label={t("Compare {0}", vehicleTitle(v))} />
                     </label>
                   </div>
                 ))}
@@ -122,15 +121,15 @@ function Compare({ ids, onClose }: { ids: string[]; onClose: () => void }) {
       .filter((r) => r.vals.some((v) => v !== "—"));
   }, [ready, fields.data, details, system]);
   return (
-    <Modal open title="Compare vehicles" onClose={onClose} wide>
+    <Modal open title={t("Compare vehicles")} onClose={onClose} wide>
       {!ready ? (
-        <p>Loading…</p>
+        <p>{t("Loading…")}</p>
       ) : (
         <div className="table-wrap" style={{ maxHeight: "65vh" }}>
           <table>
             <thead>
               <tr>
-                <th>Specification</th>
+                <th>{t("Specification")}</th>
                 {details.map((d) => (
                   <th key={d.data!.vehicle.id}>{vehicleTitle(d.data!.vehicle)}</th>
                 ))}
@@ -149,7 +148,7 @@ function Compare({ ids, onClose }: { ids: string[]; onClose: () => void }) {
           </table>
         </div>
       )}
-      <p className="small muted">Highlighted rows differ. “—” means no source has given that value.</p>
+      <p className="small muted">{t("Highlighted rows differ. “—” means no source has given that value.")}</p>
     </Modal>
   );
 }

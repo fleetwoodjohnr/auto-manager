@@ -4,6 +4,7 @@ import { useAction, useCmd } from "../../api/queries";
 import type { Interchange as I, PartRow, Related } from "../../api/types";
 import { useApp } from "../../store";
 import { Badge, Field, Modal } from "../../ui";
+import { t, tx } from "../../i18n";
 
 /** Supersession (old → new numbers) and interchangeable parts for one part. */
 export function Interchange({ partId }: { partId: string }) {
@@ -20,8 +21,8 @@ export function Interchange({ partId }: { partId: string }) {
       </button>
       <span className="small muted">{[r.brand, r.numbers].filter(Boolean).join(" · ")}</span>
       <span className="ml-auto row">
-        <Badge tone={r.available > 0 ? "ok" : "neutral"}>{r.available} available</Badge>
-        <button className="icon-btn" aria-label={`Remove link to ${r.name}`} onClick={onRemove}>
+        <Badge tone={r.available > 0 ? "ok" : "neutral"}>{tx("{0} available", r.available)}</Badge>
+        <button className="icon-btn" aria-label={t("Remove link to {0}", r.name)} onClick={onRemove}>
           <Trash2 size={13} aria-hidden />
         </button>
       </span>
@@ -32,35 +33,32 @@ export function Interchange({ partId }: { partId: string }) {
     <section className="card">
       <div className="spread">
         <h2>
-          <ArrowRightLeft size={16} aria-hidden /> Alternatives and supersession
-        </h2>
+          <ArrowRightLeft size={16} aria-hidden />{" "}{t("Alternatives and supersession")}</h2>
         <div className="row">
           <button className="btn" onClick={() => setAdding("equivalent")}>
-            <Plus size={14} aria-hidden /> Equivalent
-          </button>
+            <Plus size={14} aria-hidden />{" "}{t("Equivalent")}</button>
           <button className="btn" onClick={() => setAdding("newer")}>
-            <Plus size={14} aria-hidden /> Replaced by
-          </button>
+            <Plus size={14} aria-hidden />{" "}{t("Replaced by")}</button>
         </div>
       </div>
-      {d && d.superseded_by.length + d.supersedes.length + d.equivalents.length === 0 && <p className="muted">No alternatives recorded.</p>}
+      {d && d.superseded_by.length + d.supersedes.length + d.equivalents.length === 0 && <p className="muted">{t("No alternatives recorded.")}</p>}
       {d && d.superseded_by.length > 0 && (
         <>
-          <p className="label">Replaced by (use the newer number)</p>
+          <p className="label">{t("Replaced by (use the newer number)")}</p>
           <ul className="items" style={{ maxHeight: "none" }}>{d.superseded_by.map((r) => row(r, () => rmSup.mutate({ oldPartId: partId, newPartId: r.part_id })))}</ul>
         </>
       )}
       {d && d.supersedes.length > 0 && (
         <>
-          <p className="label">Replaces</p>
+          <p className="label">{t("Replaces")}</p>
           <ul className="items" style={{ maxHeight: "none" }}>{d.supersedes.map((r) => row(r, () => rmSup.mutate({ oldPartId: r.part_id, newPartId: partId })))}</ul>
         </>
       )}
       {d && d.equivalents.length > 0 && (
         <>
-          <p className="label">Interchangeable</p>
+          <p className="label">{t("Interchangeable")}</p>
           <ul className="items" style={{ maxHeight: "none" }}>{d.equivalents.map((r) => row(r, () => rmEq.mutate({ partId, otherId: r.part_id })))}</ul>
-          <p className="small muted">Interchangeable parts still need their own fitment records to show as fitting a vehicle.</p>
+          <p className="small muted">{t("Interchangeable parts still need their own fitment records to show as fitting a vehicle.")}</p>
         </>
       )}
       {adding && <PickPart partId={partId} mode={adding} onClose={() => setAdding(null)} />}
@@ -74,31 +72,27 @@ function PickPart({ partId, mode, onClose }: { partId: string; mode: "newer" | "
   const [note, setNote] = useState("");
   const parts = useCmd<PartRow[]>("part_list", { query: { q: q || null, category_id: null, brand: null, limit: 40 } });
   const inv = ["interchange_get", "vehicle_matches", "part_get"];
-  const sup = useAction<{ oldPartId: string; newPartId: string; note: string }>("supersession_add", { invalidate: inv, success: "Saved", silentError: true });
-  const eq = useAction<{ partId: string; otherId: string; note: string }>("equivalent_add", { invalidate: inv, success: "Saved", silentError: true });
+  const sup = useAction<{ oldPartId: string; newPartId: string; note: string }>("supersession_add", { invalidate: inv, success: t("Saved"), silentError: true });
+  const eq = useAction<{ partId: string; otherId: string; note: string }>("equivalent_add", { invalidate: inv, success: t("Saved"), silentError: true });
   const err = sup.error ?? eq.error;
   return (
     <Modal
       open
-      title={mode === "newer" ? "This part is replaced by…" : "Interchangeable with…"}
+      title={mode === "newer" ? t("This part is replaced by…") : t("Interchangeable with…")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
           <button
             className="btn primary"
             disabled={!pick}
             onClick={() => (mode === "newer" ? sup.mutate({ oldPartId: partId, newPartId: pick, note }, { onSuccess: onClose }) : eq.mutate({ partId, otherId: pick, note }, { onSuccess: onClose }))}
-          >
-            Save
-          </button>
+          >{t("Save")}</button>
         </>
       }
     >
-      <input type="search" placeholder="Search the catalog" value={q} onChange={(e) => setQ(e.target.value)} autoFocus aria-label="Search parts" />
-      <select size={8} value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Parts">
+      <input type="search" placeholder={t("Search the catalog")} value={q} onChange={(e) => setQ(e.target.value)} autoFocus aria-label={t("Search parts")} />
+      <select size={8} value={pick} onChange={(e) => setPick(e.target.value)} aria-label={t("Parts")}>
         {parts.data
           ?.filter((p) => p.id !== partId)
           .map((p) => (
@@ -107,8 +101,8 @@ function PickPart({ partId, mode, onClose }: { partId: string; mode: "newer" | "
             </option>
           ))}
       </select>
-      <Field label="Note / source (optional)">
-        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Supersession per dealer parts counter, 2026" />
+      <Field label={t("Note / source (optional)")}>
+        <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("e.g. Supersession per dealer parts counter, 2026")} />
       </Field>
       {err != null && <div className="notice bad">{String((err as { message?: string }).message ?? err)}</div>}
     </Modal>

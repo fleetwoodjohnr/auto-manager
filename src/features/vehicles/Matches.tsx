@@ -7,11 +7,12 @@ import { useApp, toast } from "../../store";
 import { ActionsMenu, Badge, Empty, FitBadge, Loaded, StockBadge } from "../../ui";
 import { money } from "../../lib/format";
 import { AddToEstimate, AddToList, ReserveDialog } from "../shared/actions";
+import { t, tx } from "../../i18n";
 
 const GROUPS: { status: FitStatus; title: string; help: string }[] = [
-  { status: "confirmed", title: "Confirmed fit", help: "A verified fitment record matches this vehicle's configuration." },
-  { status: "conditional", title: "Conditional fit", help: "Fits some configurations; the details below decide it." },
-  { status: "possible", title: "Possible fit", help: "A record matches but nobody has verified it. Check before fitting." },
+  { status: "confirmed", title: t("Confirmed fit"), help: t("A verified fitment record matches this vehicle's configuration.") },
+  { status: "conditional", title: t("Conditional fit"), help: t("Fits some configurations; the details below decide it.") },
+  { status: "possible", title: t("Possible fit"), help: t("A record matches but nobody has verified it. Check before fitting.") },
 ];
 
 /** Parts with fitment records for a vehicle, grouped by how sure the match is. `inStockOnly`
@@ -30,7 +31,7 @@ export default function Matches({ vehicle, inStockOnly }: { vehicle: Vehicle; in
   const restock = async (m: PartMatch) => {
     try {
       await call("restock_request", { partId: m.part_id, vehicleId: vehicle.id });
-      toast(`${m.name} added to the restocking list`, { action: { label: "Open", run: () => go({ page: "inventory", tab: "reorder" }) } });
+      toast(t("{0} added to the restocking list", m.name), { action: { label: t("Open"), run: () => go({ page: "inventory", tab: "reorder" }) } });
       refresh();
     } catch (e) {
       toast(errorMessage(e), { tone: "bad" });
@@ -40,11 +41,11 @@ export default function Matches({ vehicle, inStockOnly }: { vehicle: Vehicle; in
   return (
     <div className="stack">
       <div className="row">
-        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Filter by system">
-          <option value="">All systems</option>
+        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t("Filter by system")}>
+          <option value="">{t("All systems")}</option>
           {top.map((c) => (
             <optgroup key={c.id} label={c.name}>
-              <option value={c.id}>All {c.name.toLowerCase()}</option>
+              <option value={c.id}>{tx("All {0}", c.name.toLowerCase())}</option>
               {(cats.data ?? [])
                 .filter((x) => x.parent_id === c.id)
                 .map((x) => (
@@ -55,9 +56,7 @@ export default function Matches({ vehicle, inStockOnly }: { vehicle: Vehicle; in
             </optgroup>
           ))}
         </select>
-        <span className="small muted">
-          {inStockOnly ? "Stocked parts" : "Catalog parts"} with fitment records for this vehicle. A part is never shown as fitting just because the make and model match.
-        </span>
+        <span className="small muted">{tx("{0} with fitment records for this vehicle. A part is never shown as fitting just because the make and model match.", inStockOnly ? t("Stocked parts") : t("Catalog parts"))}</span>
       </div>
       <Loaded q={q}>
         {(m) => {
@@ -65,15 +64,11 @@ export default function Matches({ vehicle, inStockOnly }: { vehicle: Vehicle; in
             return (
               <Empty
                 icon={<Boxes size={20} />}
-                title={inStockOnly ? "No stocked parts have fitment records for this vehicle" : "No parts in the catalog have fitment records for this vehicle"}
+                title={inStockOnly ? t("No stocked parts have fitment records for this vehicle") : t("No parts in the catalog have fitment records for this vehicle")}
                 action={
-                  <button className="btn" onClick={() => go("parts")}>
-                    Open the parts catalog
-                  </button>
+                  <button className="btn" onClick={() => go("parts")}>{t("Open the parts catalog")}</button>
                 }
-              >
-                Add fitment records to parts (or import a fitment file), and matching parts appear here with their stock.
-              </Empty>
+              >{t("Add fitment records to parts (or import a fitment file), and matching parts appear here with their stock.")}</Empty>
             );
           }
           const shown = (s: FitStatus) => m.matches.filter((x) => x.fit.status === s);
@@ -86,7 +81,7 @@ export default function Matches({ vehicle, inStockOnly }: { vehicle: Vehicle; in
                     <FitBadge status={g.status} /> {m.counts[g.status] ?? 0}
                   </span>
                 ))}
-                {excluded.length > 0 && <span className="small muted">· {excluded.length} not compatible or undetermined</span>}
+                {excluded.length > 0 && <span className="small muted">{tx("· {0} not compatible or undetermined", excluded.length)}</span>}
               </div>
               {m.missing.length > 0 && <MissingDetails vehicleId={vehicle.id} missing={m.missing} />}
               {GROUPS.map((g) =>
@@ -112,7 +107,7 @@ export default function Matches({ vehicle, inStockOnly }: { vehicle: Vehicle; in
               )}
               {excluded.length > 0 && (
                 <details>
-                  <summary>Not compatible or undetermined ({excluded.length})</summary>
+                  <summary>{tx("Not compatible or undetermined ({0})", excluded.length)}</summary>
                   <div className="stack mt-2" style={{ gap: 8 }}>
                     {excluded.map((x) => (
                       <MatchCard key={x.part_id} m={x} onOpen={() => go({ page: "part", id: x.part_id })} onItem={(o) => go({ page: "item", id: o.item_id })} />
@@ -160,7 +155,7 @@ function MatchCard({
           <div className="small muted">
             {[m.brand, m.numbers, m.category].filter(Boolean).join(" · ")}
             {m.fit.position && ` · ${m.fit.position}`}
-            {m.fit.quantity != null && ` · ${m.fit.quantity} per vehicle`}
+            {m.fit.quantity != null && t(" · {0} per vehicle", m.fit.quantity)}
           </div>
         </div>
         <div className="row">
@@ -168,9 +163,9 @@ function MatchCard({
           {fits && onList && (
             <ActionsMenu
               items={[
-                { label: "Open part", icon: <Cog size={14} />, run: onOpen },
-                { label: "Save to a parts list", icon: <ListPlus size={14} />, run: onList },
-                !inStock && onRestock ? { label: "Request restocking", icon: <ShoppingCart size={14} />, run: onRestock } : null,
+                { label: t("Open part"), icon: <Cog size={14} />, run: onOpen },
+                { label: t("Save to a parts list"), icon: <ListPlus size={14} />, run: onList },
+                !inStock && onRestock ? { label: t("Request restocking"), icon: <ShoppingCart size={14} />, run: onRestock } : null,
               ].filter((x) => x !== null)}
             />
           )}
@@ -179,7 +174,7 @@ function MatchCard({
       {(m.fit.requirements.length > 0 || m.fit.status !== "confirmed") && (
         <div className="small mt-1" style={{ color: "var(--text-2)" }}>
           <Info size={12} aria-hidden /> {m.fit.reasons.join(" ")}
-          {m.fit.requirements.length > 0 && <> Needs: {m.fit.requirements.map((r) => `${r.label} = ${r.value}`).join("; ")}.</>}
+          {m.fit.requirements.length > 0 && <>{" "}{tx("Needs: {0}.", m.fit.requirements.map((r) => `${r.label} = ${r.value}`).join("; "))}</>}
         </div>
       )}
       {m.items.length > 0 ? (
@@ -195,20 +190,18 @@ function MatchCard({
                 </td>
                 <td>
                   <StockBadge available={o.available} />
-                  {o.reserved > 0 && <span className="small muted"> · {o.reserved} reserved</span>}
+                  {o.reserved > 0 && <span className="small muted">{" "}{tx("· {0} reserved", o.reserved)}</span>}
                 </td>
                 <td className="small muted">{o.bins || "—"}</td>
-                <td className="num">{o.price ? money(o.price) : <span className="small muted" title="No pricing rule applies and no fixed price is set">no price</span>}</td>
+                <td className="num">{o.price ? money(o.price) : <span className="small muted" title={t("No pricing rule applies and no fixed price is set")}>{t("no price")}</span>}</td>
                 <td className="num" style={{ whiteSpace: "nowrap" }}>
                   {fits && onReserve && (
-                    <button className="btn" disabled={o.available <= 0} onClick={() => onReserve(o)} title="Hold stock for this vehicle">
-                      <PackageCheck size={14} aria-hidden /> Reserve
-                    </button>
+                    <button className="btn" disabled={o.available <= 0} onClick={() => onReserve(o)} title={t("Hold stock for this vehicle")}>
+                      <PackageCheck size={14} aria-hidden />{" "}{t("Reserve")}</button>
                   )}{" "}
                   {fits && onEstimate && (
                     <button className="btn" onClick={() => onEstimate(o)} disabled={!o.price}>
-                      <ClipboardList size={14} aria-hidden /> Add to estimate
-                    </button>
+                      <ClipboardList size={14} aria-hidden />{" "}{t("Add to estimate")}</button>
                   )}
                 </td>
               </tr>
@@ -216,7 +209,7 @@ function MatchCard({
           </tbody>
         </table>
       ) : (
-        <p className="small muted mt-1">Not stocked. {onRestock && fits && <button className="btn link" style={{ padding: 0 }} onClick={onRestock}>Request restocking</button>}</p>
+        <p className="small muted mt-1">{t("Not stocked.")}{" "}{onRestock && fits && <button className="btn link" style={{ padding: 0 }} onClick={onRestock}>{t("Request restocking")}</button>}</p>
       )}
     </div>
   );
@@ -230,7 +223,7 @@ function MissingDetails({ vehicleId, missing }: { vehicleId: string; missing: Ve
     if (!value) return;
     try {
       await call("vehicle_set_spec", { id: vehicleId, spec: { key, value, unit: null, source_ref: null } });
-      toast("Saved; matches updated");
+      toast(t("Saved; matches updated"));
       refresh();
     } catch (e) {
       toast(errorMessage(e), { tone: "bad" });
@@ -238,7 +231,7 @@ function MissingDetails({ vehicleId, missing }: { vehicleId: string; missing: Ve
   };
   return (
     <div className="notice warn stack" style={{ gap: 8 }}>
-      <strong>Some matches depend on details this vehicle's record doesn't have yet.</strong>
+      <strong>{t("Some matches depend on details this vehicle's record doesn't have yet.")}</strong>
       {missing.map(([r, n]) => (
         <form
           key={r.key}
@@ -249,12 +242,10 @@ function MissingDetails({ vehicleId, missing }: { vehicleId: string; missing: Ve
           }}
         >
           <span style={{ minWidth: 200 }}>
-            {r.label} <span className="small muted">({n} part{n === 1 ? "" : "s"})</span>
+            {r.label} <span className="small muted">{tx("({0} part{1})", n, n === 1 ? "" : "s")}</span>
           </span>
-          <input type="text" placeholder="Value from the vehicle or its paperwork" value={values[r.key] ?? ""} onChange={(e) => setValues({ ...values, [r.key]: e.target.value })} aria-label={r.label} />
-          <button className="btn" disabled={!values[r.key]?.trim()}>
-            Save
-          </button>
+          <input type="text" placeholder={t("Value from the vehicle or its paperwork")} value={values[r.key] ?? ""} onChange={(e) => setValues({ ...values, [r.key]: e.target.value })} aria-label={r.label} />
+          <button className="btn" disabled={!values[r.key]?.trim()}>{t("Save")}</button>
         </form>
       ))}
     </div>

@@ -31,3 +31,8 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# Dependencies are optimized in dev/test builds too: image decoding and text recognition are
+# unusably slow without it. (Auto Manager's own crates stay quick to rebuild.)
+[profile.dev.package."*"]
+opt-level = 3

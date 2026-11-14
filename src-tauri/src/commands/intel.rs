@@ -297,3 +297,21 @@ pub async fn bulletin_import(core: State<'_, Core>, vehicle_id: String, url: Str
     let _ = std::fs::remove_dir_all(&dir);
     result
 }
+
+/// Specification values found in the vehicle's own documents, each with its page (nothing is
+/// saved until the person picks one).
+#[tauri::command(async)]
+pub fn manual_spec_suggestions(core: State<'_, Core>, vehicle_id: String) -> AppResult<Vec<auto_manager_core::manual_facts::SpecFound>> {
+    check_id(&vehicle_id)?;
+    core.read(|c| auto_manager_core::manual_facts::find_specs(c, &vehicle_id))
+}
+
+/// Service intervals found in the vehicle's own documents.
+#[tauri::command(async)]
+pub fn manual_interval_suggestions(
+    core: State<'_, Core>,
+    vehicle_id: String,
+) -> AppResult<Vec<auto_manager_core::manual_facts::IntervalFound>> {
+    check_id(&vehicle_id)?;
+    core.read(|c| auto_manager_core::manual_facts::find_intervals(c, &vehicle_id))
+}

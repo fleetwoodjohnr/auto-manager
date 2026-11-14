@@ -7,6 +7,7 @@ import { useApp } from "../../store";
 import { ActionsMenu, Badge, DataTable, Empty, Field, Loaded, Modal, PageHead, useConfirm } from "../../ui";
 import { STATUS } from "../vehicles/VehicleService";
 import { vehicleTitle } from "../vehicles/Garage";
+import { t } from "../../i18n";
 
 export default function Customers() {
   const { route } = useApp();
@@ -14,41 +15,40 @@ export default function Customers() {
   const list = useCmd<Customer[]>("customer_list", { q: q || null });
   const [editing, setEditing] = useState<Customer | "new" | null>(null);
   const [open, setOpen] = useState<string | null>(route.id ?? null);
-  const del = useAction<{ id: string }>("customer_delete", { success: "Customer deleted" });
+  const del = useAction<{ id: string }>("customer_delete", { success: t("Customer deleted") });
   const { ask, dialog } = useConfirm();
   return (
     <div className="page wide">
       {dialog}
-      <PageHead back title="Customers" sub="Kept on this computer only. Vehicles, estimates, jobs and invoices link to them.">
+      <PageHead back title={t("Customers")} sub={t("Kept on this computer only. Vehicles, estimates, jobs and invoices link to them.")}>
         <button className="btn primary" onClick={() => setEditing("new")}>
-          <Plus size={16} aria-hidden /> Add customer
-        </button>
+          <Plus size={16} aria-hidden />{" "}{t("Add customer")}</button>
       </PageHead>
-      <input type="search" placeholder="Search name, phone or email" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" className="mb-3" style={{ width: 340 }} />
+      <input type="search" placeholder={t("Search name, phone or email")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("Search customers")} className="mb-3" style={{ width: 340 }} />
       <Loaded q={list}>
         {(rows) =>
           rows.length === 0 ? (
-            <Empty icon={<Users size={20} />} title={q ? "No customers match" : "No customers yet"} />
+            <Empty icon={<Users size={20} />} title={q ? t("No customers match") : t("No customers yet")} />
           ) : (
             <DataTable
-              label="Customers"
+              label={t("Customers")}
               rows={rows}
               rowKey={(c) => c.id}
               onOpen={(c) => setOpen(c.id)}
               height="calc(100vh - 300px)"
               menu={(c) => [
-                { label: "Open", run: () => setOpen(c.id) },
-                { label: "Edit", run: () => setEditing(c) },
+                { label: t("Open"), run: () => setOpen(c.id) },
+                { label: t("Edit"), run: () => setEditing(c) },
                 null,
-                { label: "Delete", danger: true, run: async () => (await ask(`Delete ${c.name}?`, "Their vehicles and jobs stay, without the customer link.")) && del.mutate({ id: c.id }) },
+                { label: t("Delete"), danger: true, run: async () => (await ask(t("Delete {0}?", c.name), t("Their vehicles and jobs stay, without the customer link."))) && del.mutate({ id: c.id }) },
               ]}
               columns={[
-                { id: "name", label: "Name", width: "minmax(160px, 2fr)", render: (c) => c.name, sort: (c) => c.name },
-                { id: "phone", label: "Phone", width: "140px", render: (c) => c.phone },
-                { id: "email", label: "Email", width: "minmax(160px, 1.5fr)", render: (c) => c.email },
-                { id: "v", label: "Vehicles", width: "90px", render: (c) => c.vehicle_count, align: "right", sort: (c) => c.vehicle_count },
-                { id: "j", label: "Jobs", width: "70px", render: (c) => c.job_count, align: "right", sort: (c) => c.job_count },
-                { id: "a", label: "", width: "44px", render: (c) => <ActionsMenu items={[{ label: "Edit", run: () => setEditing(c) }]} /> },
+                { id: "name", label: t("Name"), width: "minmax(160px, 2fr)", render: (c) => c.name, sort: (c) => c.name },
+                { id: "phone", label: t("Phone"), width: "140px", render: (c) => c.phone },
+                { id: "email", label: t("Email"), width: "minmax(160px, 1.5fr)", render: (c) => c.email },
+                { id: "v", label: t("Vehicles"), width: "90px", render: (c) => c.vehicle_count, align: "right", sort: (c) => c.vehicle_count },
+                { id: "j", label: t("Jobs"), width: "70px", render: (c) => c.job_count, align: "right", sort: (c) => c.job_count },
+                { id: "a", label: "", width: "44px", render: (c) => <ActionsMenu items={[{ label: t("Edit"), run: () => setEditing(c) }]} /> },
               ]}
             />
           )
@@ -67,44 +67,44 @@ function CustomerCard({ id, onClose, onEdit }: { id: string; onClose: () => void
   const vehicles = useCmd<Vehicle[]>("vehicle_list", { saved: true });
   const mine = vehicles.data?.filter((v) => v.customer_id === id) ?? [];
   return (
-    <Modal open wide title={c.data?.name ?? "Customer"} onClose={onClose} footer={c.data && <button className="btn" onClick={() => (onClose(), onEdit(c.data!))}>Edit</button>}>
+    <Modal open wide title={c.data?.name ?? t("Customer")} onClose={onClose} footer={c.data && <button className="btn" onClick={() => (onClose(), onEdit(c.data!))}>{t("Edit")}</button>}>
       {c.data && (
         <dl className="kv">
           {c.data.phone && (
             <>
-              <dt>Phone</dt>
+              <dt>{t("Phone")}</dt>
               <dd>{c.data.phone}</dd>
             </>
           )}
           {c.data.email && (
             <>
-              <dt>Email</dt>
+              <dt>{t("Email")}</dt>
               <dd>{c.data.email}</dd>
             </>
           )}
           {c.data.address && (
             <>
-              <dt>Address</dt>
+              <dt>{t("Address")}</dt>
               <dd style={{ whiteSpace: "pre-wrap" }}>{c.data.address}</dd>
             </>
           )}
           {c.data.discount_pct && (
             <>
-              <dt>Discount</dt>
+              <dt>{t("Discount")}</dt>
               <dd>{c.data.discount_pct}%</dd>
             </>
           )}
           {c.data.notes && (
             <>
-              <dt>Notes</dt>
+              <dt>{t("Notes")}</dt>
               <dd style={{ whiteSpace: "pre-wrap" }}>{c.data.notes}</dd>
             </>
           )}
         </dl>
       )}
-      <p className="label">Vehicles</p>
+      <p className="label">{t("Vehicles")}</p>
       {mine.length === 0 ? (
-        <p className="small muted">None. Set the owner on a vehicle's “Edit details”.</p>
+        <p className="small muted">{t("None. Set the owner on a vehicle's “Edit details”.")}</p>
       ) : (
         <ul className="items" style={{ maxHeight: "none" }}>
           {mine.map((v) => (
@@ -117,7 +117,7 @@ function CustomerCard({ id, onClose, onEdit }: { id: string; onClose: () => void
           ))}
         </ul>
       )}
-      <p className="label">Estimates and jobs</p>
+      <p className="label">{t("Estimates and jobs")}</p>
       {jobs.data?.length ? (
         <ul className="items" style={{ maxHeight: "none" }}>
           {jobs.data.map((j) => (
@@ -132,7 +132,7 @@ function CustomerCard({ id, onClose, onEdit }: { id: string; onClose: () => void
           ))}
         </ul>
       ) : (
-        <p className="small muted">None yet.</p>
+        <p className="small muted">{t("None yet.")}</p>
       )}
     </Modal>
   );
@@ -141,43 +141,39 @@ function CustomerCard({ id, onClose, onEdit }: { id: string; onClose: () => void
 function EditCustomer({ c, onClose }: { c: Customer | null; onClose: () => void }) {
   const profiles = useCmd<Profile[]>("profile_list");
   const [f, setF] = useState<CustomerInput>({ name: c?.name ?? "", phone: c?.phone ?? "", email: c?.email ?? "", address: c?.address ?? "", notes: c?.notes ?? "", pricing_profile_id: c?.pricing_profile_id ?? null, discount_pct: c?.discount_pct ?? null });
-  const save = useAction<{ id: string | null; input: CustomerInput }>("customer_save", { success: "Saved", silentError: true });
+  const save = useAction<{ id: string | null; input: CustomerInput }>("customer_save", { success: t("Saved"), silentError: true });
   const fe = (k: string) => (save.error && errorField(save.error) === k ? errorMessage(save.error) : null);
   const set = <K extends keyof CustomerInput>(k: K, v: CustomerInput[K]) => setF({ ...f, [k]: v });
   return (
     <Modal
       open
-      title={c ? "Edit customer" : "Add customer"}
+      title={c ? t("Edit customer") : t("Add customer")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={() => save.mutate({ id: c?.id ?? null, input: f }, { onSuccess: onClose })}>
-            Save
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
+          <button className="btn primary" onClick={() => save.mutate({ id: c?.id ?? null, input: f }, { onSuccess: onClose })}>{t("Save")}</button>
         </>
       }
     >
-      <Field label="Name" error={fe("name")}>
+      <Field label={t("Name")} error={fe("name")}>
         <input type="text" value={f.name} onChange={(e) => set("name", e.target.value)} autoFocus />
       </Field>
       <div className="grid two">
-        <Field label="Phone">
+        <Field label={t("Phone")}>
           <input type="tel" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
         </Field>
-        <Field label="Email" error={fe("email")}>
+        <Field label={t("Email")} error={fe("email")}>
           <input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} />
         </Field>
       </div>
-      <Field label="Address">
+      <Field label={t("Address")}>
         <textarea value={f.address} onChange={(e) => set("address", e.target.value)} />
       </Field>
       <div className="grid two">
-        <Field label="Pricing profile" error={fe("pricing_profile_id")}>
+        <Field label={t("Pricing profile")} error={fe("pricing_profile_id")}>
           <select value={f.pricing_profile_id ?? ""} onChange={(e) => set("pricing_profile_id", e.target.value || null)}>
-            <option value="">Default</option>
+            <option value="">{t("Default")}</option>
             {profiles.data?.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -185,11 +181,11 @@ function EditCustomer({ c, onClose }: { c: Customer | null; onClose: () => void 
             ))}
           </select>
         </Field>
-        <Field label="Standing discount (%)" error={fe("discount_pct")}>
+        <Field label={t("Standing discount (%)")} error={fe("discount_pct")}>
           <input type="text" inputMode="decimal" value={f.discount_pct ?? ""} onChange={(e) => set("discount_pct", e.target.value || null)} />
         </Field>
       </div>
-      <Field label="Notes">
+      <Field label={t("Notes")}>
         <textarea value={f.notes} onChange={(e) => set("notes", e.target.value)} />
       </Field>
       {save.error != null && !errorField(save.error) && <div className="notice bad">{errorMessage(save.error)}</div>}

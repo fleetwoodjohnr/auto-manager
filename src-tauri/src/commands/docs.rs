@@ -130,3 +130,18 @@ pub fn attachment_delete(core: State<'_, Core>, id: String) -> AppResult<()> {
     let paths = core.paths.clone();
     core.tx(|c| attachments::delete(c, &paths, &id))
 }
+
+/// Read VINs and barcodes from a picture file the person chose.
+#[tauri::command(async)]
+pub fn scan_image(path: String) -> AppResult<auto_manager_core::scan::ScanResult> {
+    auto_manager_core::scan::scan_file(&PathBuf::from(path))
+}
+
+/// Read VINs and barcodes from a camera frame (JPEG/PNG bytes sent as the raw request body).
+#[tauri::command(async)]
+pub fn scan_frame(request: tauri::ipc::Request<'_>) -> AppResult<auto_manager_core::scan::ScanResult> {
+    match request.body() {
+        tauri::ipc::InvokeBody::Raw(bytes) => auto_manager_core::scan::scan(bytes),
+        _ => Err(auto_manager_core::AppError::msg("Send the picture as raw bytes.")),
+    }
+}

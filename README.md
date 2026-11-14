@@ -17,20 +17,21 @@ It's part of the Simple Suite family (Simple Cell, Simple Docs, Simple Viz, Simp
 
 | Area | Highlights |
 |---|---|
-| Vehicle Lookup | 17-character VIN with check-digit validation, partial VINs (`*`), CSV/Excel bulk decode (50 per request), identification without a VIN for older or non-US vehicles |
+| Vehicle Lookup | 17-character VIN with check-digit validation, partial VINs (`*`), **scanning the VIN with the camera or from a photo** (door-jamb barcodes and printed plates), CSV/Excel bulk decode (50 per request), identification without a VIN for older or non-US vehicles |
 | Specifications | Every vPIC value, grouped, with its source and confidence. "Not available from free sources" where nothing is known. Your corrections are kept beside the original values. Dimensions (vPIC Canadian specifications) and engine and fuel economy (EPA), marked model-level |
 | Parts & fitment | Hierarchical catalog with OEM, aftermarket, barcode and interchange numbers. Fitment records with conditions. Fit statuses: **Confirmed**, **Conditional**, **Possible**, **Not compatible**, **Unknown**. Never a fit from make and model alone. Supersession, interchange, and ACES/PIES and spreadsheet import |
-| Inventory | Movement ledger (receive, issue, transfer, adjust, count, damage, returns) with database-enforced no-negative stock. Reservations that are never deducted twice. Undo. Multiple locations and bins. Weighted-average or last cost. CSV/Excel import with column mapping and duplicate detection. Labels (Code 128 or QR) |
+| Inventory | Whole or fractional quantities with units (oil by the litre). Movement ledger (receive, issue, transfer, adjust, count, damage, returns) with database-enforced no-negative stock. Reservations that are never deducted twice. Undo. Multiple locations and bins. Weighted-average or last cost. CSV/Excel import with column mapping and duplicate detection. Labels (Code 128 or QR) |
 | Pricing | Profiles with fixed, markup or margin rules by category, brand, item and quantity, plus minimum prices, rounding and tax. Every price shows how it was calculated. Decimal arithmetic throughout |
 | Service | Estimates → approved → in progress → completed (stock consumed) → invoiced. Customers, labor, fees, discounts, printable estimates and invoices (Save as PDF) |
-| Maintenance | Service intervals taken from your owner's manual, service history, what's due across the garage |
+| Maintenance | Service intervals and specifications (torque, capacities, tire pressures…) found in your own manuals with the page cited, service history, what's due across the garage |
 | Manuals | PDF library with a built-in viewer: zoom, search, contents, bookmarks, notes, print. Linked to vehicles, full-text searchable, with "Where Is It?" for components. Verified links to official owner-manual sites |
-| Safety | NHTSA recall campaigns by model (clearly marked as *potentially* applicable), a per-VIN result you record, and NHTSA 5-Star ratings |
+| Safety | NHTSA recall campaigns by model (clearly marked as *potentially* applicable), a per-VIN result you record, the model's technical service bulletins with their PDFs, and NHTSA 5-Star ratings |
 | Diagnostics | Generic OBD-II code reference (OBDex, CC0). Read-only ELM327 scanner: codes, freeze frame, live data, VIN. Never clears codes |
 | Purchasing | Suppliers, supplier part numbers and prices, price comparison, a reorder assistant, purchase orders, receiving, backorders, cost history |
 | Reports | Inventory value, stock status, movement, usage, slow movers, turnover, revenue and margins, estimate conversion, supplier spending, vehicle history and cost. Print to PDF, CSV or Excel. Data Quality Center |
 | Attachments | Photos and PDFs (receipts, invoices, diagrams) on vehicles, parts, inventory items and jobs |
-| Data | Automatic daily backups, verified restore, encrypted bundles to move to another computer, full JSON export |
+| Data | Automatic daily backups, verified restore, **two-way encrypted sync between computers through a shared folder**, full JSON export |
+| Languages | English, Spanish and French |
 | Updates | Signed updates from GitHub Releases, stable or beta channel, checks and downloads only with your permission |
 
 The full list of what's done and what isn't, and how each part was verified, is in **[docs/LIMITATIONS.md](docs/LIMITATIONS.md)**.

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Display formatting. Money is never computed here: values arrive from the Rust core as exact
 // decimal strings and are only rounded for display (half away from zero, as in the core) with
 // string arithmetic, so binary floating point never changes a figure.
@@ -121,15 +122,15 @@ export function dateTime(s: string | null | undefined): string {
 /** "just now", "5 min ago", "3 h ago", "2 days ago", then the date. */
 export function ago(s: string | null | undefined, now = Date.now()): string {
   if (!s) return "—";
-  const t = new Date(s).getTime();
-  if (isNaN(t)) return s;
-  const min = Math.round((now - t) / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
+  const at = new Date(s).getTime();
+  if (isNaN(at)) return s;
+  const min = Math.round((now - at) / 60000);
+  if (min < 1) return t("just now");
+  if (min < 60) return t("{0} min ago", min);
   const h = Math.round(min / 60);
-  if (h < 24) return `${h} h ago`;
+  if (h < 24) return t("{0} h ago", h);
   const days = Math.round(h / 24);
-  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (days < 14) return days === 1 ? t("1 day ago") : t("{0} days ago", days);
   return date(s);
 }
 

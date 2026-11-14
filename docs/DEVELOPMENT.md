@@ -25,7 +25,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked            # 226 tests: core, OBD, migrations, providers (mocked)
+cargo test --workspace --locked            # 258 tests: core, OBD, migrations, providers (mocked)
 npx tsc --noEmit && npm test && npm run build
 node --test scripts/release-manifest.test.mjs
 node scripts/check-version.mjs
@@ -42,8 +42,11 @@ npm run bindings      # cargo test export_bindings + scripts/types-index.mjs
 
 ```sh
 npx tauri build --debug --no-bundle        # target/debug/auto-manager with the UI embedded
-node e2e/smoke.mjs                          # every page, light and dark, screenshots in e2e/screenshots
-node e2e/workflows.mjs                      # acceptance workflows A–D + accessibility of data pages
+node e2e/smoke.mjs                          # every page, light and dark, Spanish and French; screenshots
+node e2e/workflows.mjs                      # acceptance workflows A–D, attachments, saved searches, bulletins,
+                                            # values from manuals, accessibility of data pages
+node e2e/sync.mjs                           # two computers syncing through one folder
+node e2e/scan.mjs                           # camera (WebKit mock) and VIN photo reading
 node e2e/a11y.mjs                           # axe-core WCAG 2.0–2.2 A/AA on every page, both themes
 ```
 
@@ -75,10 +78,19 @@ AUTO_MANAGER_DATA_DIR=$(mktemp -d) target/release/auto-manager --self-test
 |---|---|
 | `AUTO_MANAGER_DATA_DIR` | Data folder (portable installs, tests) |
 | `AUTO_MANAGER_LOG` | Log filter, e.g. `debug` or `auto_manager_core=trace` (default `info`) |
-| `AUTO_MANAGER_VPIC_BASE`, `AUTO_MANAGER_NHTSA_BASE`, `AUTO_MANAGER_FUELECONOMY_BASE` | Provider base URLs (tests) |
+| `AUTO_MANAGER_VPIC_BASE`, `AUTO_MANAGER_NHTSA_BASE`, `AUTO_MANAGER_NHTSA_STATIC_BASE`, `AUTO_MANAGER_FUELECONOMY_BASE` | Provider base URLs (tests) |
 | `AUTO_MANAGER_ALLOW_HTTP_LOCALHOST` | Allow plain HTTP to 127.0.0.1 (tests) |
 | `AUTO_MANAGER_UPDATE_ENDPOINT` | Update manifest URL instead of GitHub (update tests) |
 | `AUTO_MANAGER_LIVE` | Enable the live provider tests |
+| `AUTO_MANAGER_MOCK_CAMERA` | Use WebKitGTK's mock camera (Linux E2E) |
+
+## Translations
+
+Interface text is English in the code, wrapped in `t("…")` (or `tx("…")` when a slot holds an element); `src/i18n/es.json` and `fr.json` map it to Spanish and French. `npm test` fails if any text, or any fixed message from the core (`AppError::msg`/`invalid`/`Conflict` with a plain string), lacks a translation or loses a `{0}` slot. To add translations, put `{"English": ["Español", "Français"]}` in a file and run `node scripts/i18n-add.mjs file.json`; `node scripts/i18n-keys.mjs` lists every text.
+
+## Text-recognition models
+
+`npm run dev`/`build` fetch the OCR models into `src-tauri/resources/ocr` (pinned SHA-256s, `scripts/fetch-ocr-models.mjs`); they're bundled as resources. Without them, barcode scanning still works and the photo-VIN test is skipped.
 
 ## Conventions
 

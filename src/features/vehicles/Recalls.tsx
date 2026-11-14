@@ -7,11 +7,12 @@ import { toast } from "../../store";
 import { Badge, Empty, ErrorNote, ExtLink, Spinner } from "../../ui";
 import { date, dateTime } from "../../lib/format";
 import { indexManual } from "../../lib/pdf";
+import { t, tx } from "../../i18n";
 
 const STATUS: Record<string, { label: string; tone: "bad" | "ok" | "neutral" }> = {
-  outstanding: { label: "Outstanding for this VIN", tone: "bad" },
-  completed: { label: "Repair completed", tone: "ok" },
-  not_applicable: { label: "Doesn't apply to this VIN", tone: "neutral" },
+  outstanding: { label: t("Outstanding for this VIN"), tone: "bad" },
+  completed: { label: t("Repair completed"), tone: "ok" },
+  not_applicable: { label: t("Doesn't apply to this VIN"), tone: "neutral" },
 };
 
 /** Recall campaigns for the vehicle's model year, make and model, and NHTSA crash ratings. */
@@ -36,21 +37,19 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
   return (
     <div className="stack">
       <div className="notice info">
-        <strong>These campaigns are listed for every {vehicle.year} {vehicle.make} {vehicle.model}.</strong> NHTSA's public data is by model, so a campaign may not cover this particular vehicle, and its repair may already be done.
-        {vehicle.vin ? (
-          <> Check this VIN on <ExtLink href="https://www.nhtsa.gov/recalls">nhtsa.gov/recalls</ExtLink> (or with the manufacturer), then record the answer for each campaign below.</>
+        <strong>{tx("These campaigns are listed for every {0} {1} {2}.", vehicle.year, vehicle.make, vehicle.model)}</strong>{" "}{t("NHTSA's public data is by model, so a campaign may not cover this particular vehicle, and its repair may already be done.")}{vehicle.vin ? (
+          <>{" "}{t("Check this VIN on")}{" "}<ExtLink href="https://www.nhtsa.gov/recalls">{t("nhtsa.gov/recalls")}</ExtLink>{" "}{t("(or with the manufacturer), then record the answer for each campaign below.")}</>
         ) : (
-          " Add the VIN to check which campaigns are outstanding."
+          t(" Add the VIN to check which campaigns are outstanding.")
         )}
       </div>
-      {q.isPending && <Spinner label="Loading recalls" />}
+      {q.isPending && <Spinner label={t("Loading recalls")} />}
       {q.isError && (
         <>
           <ErrorNote error={q.error} />
           {online && (
             <button className="btn" onClick={() => setOnline(false)} style={{ alignSelf: "flex-start" }}>
-              <CloudOff size={16} aria-hidden /> Show saved recalls
-            </button>
+              <CloudOff size={16} aria-hidden />{" "}{t("Show saved recalls")}</button>
           )}
         </>
       )}
@@ -58,14 +57,13 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
         <>
           <div className="spread">
             <span className="small muted">
-              {q.data.freshness ? `NHTSA Recalls · ${q.data.freshness.stale ? "offline, saved" : "updated"} ${dateTime(q.data.freshness.fetched_at)}` : "Saved copy (not refreshed)"}
+              {q.data.freshness ? t("NHTSA Recalls · {0} {1}", q.data.freshness.stale ? "offline, saved" : "updated", dateTime(q.data.freshness.fetched_at)) : t("Saved copy (not refreshed)")}
             </span>
             <button className="btn" onClick={() => (setOnline(true), q.refetch())}>
-              <RefreshCw size={16} aria-hidden /> Refresh
-            </button>
+              <RefreshCw size={16} aria-hidden />{" "}{t("Refresh")}</button>
           </div>
           {q.data.recalls.length === 0 ? (
-            <Empty icon={<ShieldAlert size={20} />} title="NHTSA lists no recalls for this model year, make and model" />
+            <Empty icon={<ShieldAlert size={20} />} title={t("NHTSA lists no recalls for this model year, make and model")} />
           ) : (
             q.data.recalls.map((r) => (
               <section key={r.campaign} className="card stack" style={{ gap: 6 }}>
@@ -75,32 +73,31 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
                     <div className="small">{r.component}</div>
                   </div>
                   <div className="row">
-                    {r.park_it && <Badge tone="bad">Don't drive</Badge>}
-                    {r.park_outside && <Badge tone="bad">Park outside</Badge>}
-                    {r.over_the_air && <Badge tone="info">Over-the-air fix</Badge>}
-                    {r.status ? <Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge> : <Badge tone="warn">Not checked for this VIN</Badge>}
+                    {r.park_it && <Badge tone="bad">{t("Don't drive")}</Badge>}
+                    {r.park_outside && <Badge tone="bad">{t("Park outside")}</Badge>}
+                    {r.over_the_air && <Badge tone="info">{t("Over-the-air fix")}</Badge>}
+                    {r.status ? <Badge tone={STATUS[r.status].tone}>{STATUS[r.status].label}</Badge> : <Badge tone="warn">{t("Not checked for this VIN")}</Badge>}
                   </div>
                 </div>
                 <p style={{ margin: 0 }}>{r.summary}</p>
                 {r.consequence && (
                   <p className="small" style={{ margin: 0 }}>
-                    <strong>Risk:</strong> {r.consequence}
+                    <strong>{t("Risk:")}</strong> {r.consequence}
                   </p>
                 )}
                 {r.remedy && (
                   <p className="small" style={{ margin: 0 }}>
-                    <strong>Remedy:</strong> {r.remedy}
+                    <strong>{t("Remedy:")}</strong> {r.remedy}
                   </p>
                 )}
                 <div className="row small">
-                  <span className="muted">Per-VIN result:</span>
+                  <span className="muted">{t("Per-VIN result:")}</span>
                   {Object.entries(STATUS).map(([k, s]) => (
                     <button key={k} className={`btn ${r.status === k ? "soft" : "ghost"}`} style={{ minHeight: 26 }} onClick={() => setStatus(r, r.status === k ? null : k)}>
                       {s.label}
                     </button>
                   ))}
-                  <ExtLink href={`https://www.nhtsa.gov/recalls?nhtsaId=${encodeURIComponent(r.campaign)}`}>
-                    NHTSA record <ExternalLink size={12} aria-hidden />
+                  <ExtLink href={`https://www.nhtsa.gov/recalls?nhtsaId=${encodeURIComponent(r.campaign)}`}>{t("NHTSA record")}{" "}<ExternalLink size={12} aria-hidden />
                   </ExtLink>
                 </div>
               </section>
@@ -111,36 +108,35 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
       <Bulletins vehicle={vehicle} />
       <section className="card">
         <h2>
-          <Star size={16} aria-hidden /> NHTSA 5-Star Safety Ratings
-        </h2>
-        {ratings.isPending && <Spinner label="Loading ratings" />}
+          <Star size={16} aria-hidden />{" "}{t("NHTSA 5-Star Safety Ratings")}</h2>
+        {ratings.isPending && <Spinner label={t("Loading ratings")} />}
         {ratings.isError && <ErrorNote error={ratings.error} />}
         {ratings.data &&
           (ratings.data.ratings.length === 0 ? (
-            <p className="muted">NHTSA hasn't rated this model year, make and model.</p>
+            <p className="muted">{t("NHTSA hasn't rated this model year, make and model.")}</p>
           ) : (
             <div className="table-wrap" style={{ boxShadow: "none" }}>
               <table>
                 <thead>
                   <tr>
-                    <th>Variant</th>
-                    <th>Overall</th>
-                    <th>Frontal</th>
-                    <th>Side</th>
-                    <th>Rollover</th>
-                    <th>Complaints</th>
+                    <th>{t("Variant")}</th>
+                    <th>{t("Overall")}</th>
+                    <th>{t("Frontal")}</th>
+                    <th>{t("Side")}</th>
+                    <th>{t("Rollover")}</th>
+                    <th>{t("Complaints")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ratings.data.ratings.map((r) => (
                     <tr key={r.vehicle_id}>
                       <td>{r.description}</td>
-                      <td>{r.overall ? `${r.overall} ★` : "Not rated"}</td>
+                      <td>{r.overall ? `${r.overall} ★` : t("Not rated")}</td>
                       <td>{r.front ?? "—"}</td>
                       <td>{r.side ?? "—"}</td>
                       <td>
                         {r.rollover ?? "—"}
-                        {r.rollover_risk && <span className="small muted"> ({r.rollover_risk} risk)</span>}
+                        {r.rollover_risk && <span className="small muted">{" "}{tx("({0} risk)", r.rollover_risk)}</span>}
                       </td>
                       <td>{r.complaints ?? "—"}</td>
                     </tr>
@@ -149,7 +145,7 @@ export default function Recalls({ vehicle }: { vehicle: Vehicle }) {
               </table>
             </div>
           ))}
-        <p className="small muted mt-1">Ratings are for the model variant shown, not specifically this VIN.</p>
+        <p className="small muted mt-1">{t("Ratings are for the model variant shown, not specifically this VIN.")}</p>
       </section>
     </div>
   );
@@ -162,7 +158,7 @@ function BulletinDocs({ vehicle, b }: { vehicle: Vehicle; b: Bulletin }) {
     setBusy(d.url);
     try {
       const m = await call<Manual>("bulletin_import", { vehicleId: vehicle.id, url: d.url, title: `${b.number || `NHTSA ${b.nhtsa_id}`}: ${b.title}` });
-      toast(`Added “${m.title}” to Manuals`);
+      toast(t("Added “{0}” to Manuals", m.title));
       void indexManual(m.id).catch(() => undefined);
     } catch (e) {
       toast(errorMessage(e), { tone: "bad" });
@@ -170,19 +166,18 @@ function BulletinDocs({ vehicle, b }: { vehicle: Vehicle; b: Bulletin }) {
       setBusy(null);
     }
   };
-  if (docs.isPending) return <Spinner label="Loading documents" />;
+  if (docs.isPending) return <Spinner label={t("Loading documents")} />;
   if (docs.isError) return <ErrorNote error={docs.error} />;
-  if (docs.data.length === 0) return <p className="small muted">NHTSA has no document for this bulletin.</p>;
+  if (docs.data.length === 0) return <p className="small muted">{t("NHTSA has no document for this bulletin.")}</p>;
   return (
     <ul className="stack" style={{ gap: 4, margin: 0, paddingLeft: 0, listStyle: "none" }}>
       {docs.data.map((d) => (
         <li key={d.url} className="row small">
           <FileText size={14} aria-hidden /> {d.description || d.file_name}
-          <ExtLink href={d.url}>
-            Open on NHTSA <ExternalLink size={12} aria-hidden />
+          <ExtLink href={d.url}>{t("Open on NHTSA")}{" "}<ExternalLink size={12} aria-hidden />
           </ExtLink>
           <button className="btn ghost small" disabled={busy !== null} onClick={() => add(d)}>
-            {busy === d.url ? "Adding…" : "Add to library"}
+            {busy === d.url ? t("Adding…") : t("Add to library")}
           </button>
         </li>
       ))}
@@ -201,29 +196,25 @@ function Bulletins({ vehicle }: { vehicle: Vehicle }) {
   const shown = all || f ? list : list.slice(0, 15);
   return (
     <section className="card stack" style={{ gap: 8 }}>
-      <h2>Technical service bulletins</h2>
-      <p className="small muted" style={{ margin: 0 }}>
-        Service bulletins and other communications manufacturers sent NHTSA for every {vehicle.year} {vehicle.make} {vehicle.model}. A bulletin may cover only some configurations, so check that it applies.
-      </p>
-      {q.isPending && <Spinner label="Loading bulletins" />}
+      <h2>{t("Technical service bulletins")}</h2>
+      <p className="small muted" style={{ margin: 0 }}>{tx("Service bulletins and other communications manufacturers sent NHTSA for every {0} {1} {2}. A bulletin may cover only some configurations, so check that it applies.", vehicle.year, vehicle.make, vehicle.model)}</p>
+      {q.isPending && <Spinner label={t("Loading bulletins")} />}
       {q.isError && <ErrorNote error={q.error} />}
       {q.data && (
         <>
           <div className="spread">
-            <span className="small muted">
-              {q.data.bulletins.length} from NHTSA{q.data.freshness ? ` · ${q.data.freshness.stale ? "offline, saved" : "updated"} ${dateTime(q.data.freshness.fetched_at)}` : ""}
-            </span>
-            {q.data.bulletins.length > 0 && <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by number, component or words" aria-label="Filter bulletins" style={{ width: 260 }} />}
+            <span className="small muted">{tx("{0} from NHTSA{1}", q.data.bulletins.length, q.data.freshness ? ` · ${q.data.freshness.stale ? "offline, saved" : "updated"} ${dateTime(q.data.freshness.fetched_at)}` : "")}</span>
+            {q.data.bulletins.length > 0 && <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t("Filter by number, component or words")} aria-label={t("Filter bulletins")} style={{ width: 260 }} />}
           </div>
           {q.data.bulletins.length === 0 ? (
-            <p className="muted">NHTSA lists no manufacturer communications for this model year, make and model.</p>
+            <p className="muted">{t("NHTSA lists no manufacturer communications for this model year, make and model.")}</p>
           ) : (
             <div className="stack" style={{ gap: 0 }}>
               {shown.map((b) => (
                 <div key={b.nhtsa_id} style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
                   <button className="btn ghost" style={{ width: "100%", justifyContent: "space-between", textAlign: "left", height: "auto", padding: "4px 0" }} aria-expanded={open === b.nhtsa_id} onClick={() => setOpen(open === b.nhtsa_id ? null : b.nhtsa_id)}>
                     <span>
-                      <strong className="mono">{b.number || `NHTSA ${b.nhtsa_id}`}</strong> {b.title}
+                      <strong className="mono">{b.number || t("NHTSA {0}", b.nhtsa_id)}</strong> {b.title}
                       <span className="small muted"> · {b.date ? date(b.date) : "undated"}{b.components.length ? ` · ${b.components.join(", ")}` : ""}</span>
                     </span>
                   </button>
@@ -236,11 +227,9 @@ function Bulletins({ vehicle }: { vehicle: Vehicle }) {
                 </div>
               ))}
               {list.length > shown.length && (
-                <button className="btn ghost" style={{ alignSelf: "flex-start" }} onClick={() => setAll(true)}>
-                  Show all {list.length}
-                </button>
+                <button className="btn ghost" style={{ alignSelf: "flex-start" }} onClick={() => setAll(true)}>{tx("Show all {0}", list.length)}</button>
               )}
-              {f && list.length === 0 && <p className="small muted">No bulletin matches “{filter}”.</p>}
+              {f && list.length === 0 && <p className="small muted">{tx("No bulletin matches “{0}”.", filter)}</p>}
             </div>
           )}
         </>

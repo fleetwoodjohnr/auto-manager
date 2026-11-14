@@ -11,6 +11,7 @@ None of the built-in providers needs an account or an API key.
 | **NHTSA vPIC**: `DecodeVinValuesExtended`, `DecodeVINValuesBatch` (POST, ≤ 50 VINs), `GetMakesForVehicleType`, `GetModelsForMakeYear` | Make, model, year, trim, series, body, vehicle class, doors, plant, engine (configuration, displacement, cylinders, fuel, engine model/code, HP where NHTSA has it), transmission style and speeds, drive type, axles, brake system, wheelbase, track width, curb weight, GVWR class, seats, wheel sizes, safety equipment, plus NHTSA's own error text | **VIN-decoded**: what the manufacturer reported to NHTSA for that VIN pattern. Missing means NHTSA has no data, not that the feature is absent | U.S. Government work, public domain; free, no key; rate-controlled automatically by NHTSA | Live test `live_vpic_decode_and_lists`, recorded fixtures, E2E |
 | **NHTSA Recalls**: `api.nhtsa.gov/recalls/recallsByVehicle` | Campaign number, component, summary, consequence, remedy, notes, report date, park-it / park-outside / over-the-air flags | **Model-level.** Campaigns for that model year, make and model. NHTSA's public API doesn't say whether a campaign is open for one VIN. The app links to nhtsa.gov/recalls for that check and stores the answer you record | Public domain; free | Live test, fixtures, E2E |
 | **NHTSA 5-Star Safety Ratings**: `api.nhtsa.gov/SafetyRatings` | Overall, frontal, side and rollover ratings, rollover risk, ESC/FCW/LDW availability, complaint, recall and investigation counts | Model variant (e.g. "4 DR FWD") | Public domain; free | Live test, fixtures |
+| **NHTSA Manufacturer Communications**: `api.nhtsa.gov/vehicles/byYmmt?data=manufacturerCommunications`, `safetyIssues/byNhtsaId` | Technical service bulletins and other notices manufacturers sent NHTSA: number, date, components, summary, and the bulletin PDFs on static.nhtsa.gov (downloaded only when you choose *Add to library*) | **Model-level**: a bulletin may cover only some configurations | Public domain; free | Live test, fixtures, E2E |
 | **vPIC Canadian Vehicle Specifications** | Overall length, width, height, wheelbase, curb weight, track widths, weight distribution | **Model-level**: you pick the matching body style | Public domain; free | Live test, fixtures |
 | **EPA fueleconomy.gov** web services | Engine displacement and cylinders, transmission, drive, fuel, city/highway/combined MPG, EV range, size class | **Model-level**: you pick the matching configuration | Public domain; free | Live test, fixtures |
 | **OBDex**: generic OBD-II codes (bundled) | 9,533 SAE-range code titles, descriptions, possible causes with likelihood, symptoms, related codes, references | Generic codes; manufacturer-specific codes need licensed data | Data **CC0 1.0** ([LICENSE-DATA](https://github.com/foerbsnavi/OBDex/blob/main/LICENSE-DATA), checked 2026-11-14). English fields only are bundled | Unit test on the bundled data |
@@ -30,6 +31,14 @@ Answers are cached in the database (`api_cache`). A saved answer is used without
 | Supplier price list | CSV/XLSX with SKU or supplier part number, and cost | Updates supplier prices; unmatched lines are listed |
 | PDF documents | PDF up to 512 MB | Copied into the library by content hash; text indexed for search |
 
+## Read from your own documents
+
+| What | How | Notes |
+|---|---|---|
+| Torque, fluid capacities, oil grade, tire pressures, wheel-nut torque, brake fluid, battery group, spark-plug gap | *Find values in your manuals* on Full Specifications | Searched only in the searchable text of documents linked to the vehicle; each value is shown with its page and context and saved as "From a manual" with the page cited, only when you choose it |
+| Service intervals | *Find intervals in your manuals* on Maintenance | "every N miles (or km) or M months" lines, added with the page cited when you choose them |
+| VINs and barcodes in photos | *Scan…* | Barcodes decoded with rxing (Apache-2.0). Printed VINs read with ocrs text-recognition models (code MIT/Apache-2.0; **model weights CC BY-SA 4.0**, trained on Google's HierText dataset), fetched at build time by `scripts/fetch-ocr-models.mjs` with pinned SHA-256s and shipped in the app's resources with their license |
+
 ## Not included (and why)
 
 | Kind of source | Status |
@@ -37,7 +46,7 @@ Answers are cached in the database (`api_cache`). A saved answer is used without
 | OEM manufacturer databases (build data, OEM part catalogs) | Not public. They need commercial agreements, which the project doesn't have and can't test |
 | Licensed specification databases (fluids, capacities, torque) | Commercial, per-seat licensing. Maintenance specifications are therefore filled from your manuals, with the page cited |
 | Aftermarket catalog and supplier APIs (pricing, availability) | Per-supplier contracts. The supplier price-list import covers the common case |
-| Per-VIN open-recall status | Only the manufacturer and nhtsa.gov/recalls (one VIN at a time, interactive) provide it; no public API exists for all makes |
+| Per-VIN open-recall status | Only the manufacturer and nhtsa.gov/recalls (one VIN at a time, interactive) provide it; no public API exists for all makes (checked 2026-11-14) |
 | Manufacturer-specific trouble codes | Licensed data |
 
 No adapters are shipped for these, so nothing in the app pretends to use them.

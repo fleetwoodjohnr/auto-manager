@@ -7,21 +7,22 @@ import type { Manual, ManualLink, ManualMeta, Vehicle } from "../../api/types";
 import { toast, useApp } from "../../store";
 import { Field, Modal, Spinner } from "../../ui";
 import { indexManual } from "../../lib/pdf";
+import { t } from "../../i18n";
 
 export const KIND_LABEL: Record<string, string> = {
-  owner: "Owner's manual",
-  maintenance: "Maintenance schedule",
-  service: "Service manual",
-  repair: "Repair manual",
-  tsb: "Technical service bulletin",
-  wiring: "Wiring diagram",
-  fuse: "Fuse box diagram",
-  fluids: "Fluid specifications",
-  procedure: "Maintenance procedure",
-  component_location: "Component locations",
-  parts_diagram: "Parts diagram",
-  troubleshooting: "Troubleshooting guide",
-  installation: "Installation instructions",
+  owner: t("Owner's manual"),
+  maintenance: t("Maintenance schedule"),
+  service: t("Service manual"),
+  repair: t("Repair manual"),
+  tsb: t("Technical service bulletin"),
+  wiring: t("Wiring diagram"),
+  fuse: t("Fuse box diagram"),
+  fluids: t("Fluid specifications"),
+  procedure: t("Maintenance procedure"),
+  component_location: t("Component locations"),
+  parts_diagram: t("Parts diagram"),
+  troubleshooting: t("Troubleshooting guide"),
+  installation: t("Installation instructions"),
   other: "Other",
 };
 
@@ -29,10 +30,10 @@ export const KIND_LABEL: Record<string, string> = {
 export function indexInBackground(m: Manual, refresh: () => void) {
   void indexManual(m.id)
     .then((pages) => {
-      toast(`“${m.title}” is searchable (${pages} page${pages === 1 ? "" : "s"})`);
+      toast(t("“{0}” is searchable ({1} page{2})", m.title, pages, pages === 1 ? "" : "s"));
       refresh();
     })
-    .catch((e) => toast(`Couldn't read the text of “${m.title}”: ${errorMessage(e)}. It can still be viewed.`, { tone: "bad" }));
+    .catch((e) => toast(t("Couldn't read the text of “{0}”: {1}. It can still be viewed.", m.title, errorMessage(e)), { tone: "bad" }));
 }
 
 export function ImportManual({ vehicle, onClose }: { vehicle?: Vehicle; onClose: () => void }) {
@@ -65,7 +66,7 @@ export function ImportManual({ vehicle, onClose }: { vehicle?: Vehicle; onClose:
       const m = await call<Manual>("manual_import", { path, meta, links });
       refresh();
       onClose();
-      toast(`Imported “${m.title}”. Making it searchable…`, { action: { label: "Open", run: () => go({ page: "manual", id: m.id }) } });
+      toast(t("Imported “{0}”. Making it searchable…", m.title), { action: { label: t("Open"), run: () => go({ page: "manual", id: m.id }) } });
       indexInBackground(m, refresh);
     } catch (e) {
       setError(e);
@@ -77,32 +78,28 @@ export function ImportManual({ vehicle, onClose }: { vehicle?: Vehicle; onClose:
   return (
     <Modal
       open
-      title="Import a document"
+      title={t("Import a document")}
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
           <button className="btn primary" disabled={!path || !ok || busy} onClick={submit}>
-            {busy && <Spinner />} Import
-          </button>
+            {busy && <Spinner />}{" "}{t("Import")}</button>
         </>
       }
     >
       <div className="row">
         <button className="btn" onClick={pick}>
-          <FileUp size={16} aria-hidden /> Choose PDF…
-        </button>
+          <FileUp size={16} aria-hidden />{" "}{t("Choose PDF…")}</button>
         <span className="small muted truncate" style={{ maxWidth: 360 }}>
-          {path ?? "No file chosen"}
+          {path ?? t("No file chosen")}
         </span>
       </div>
-      <Field label="Title" error={fe("title")}>
+      <Field label={t("Title")} error={fe("title")}>
         <input type="text" value={meta.title} onChange={(e) => setMeta({ ...meta, title: e.target.value })} />
       </Field>
       <div className="grid two">
-        <Field label="Type" error={fe("kind")}>
+        <Field label={t("Type")} error={fe("kind")}>
           <select value={meta.kind} onChange={(e) => setMeta({ ...meta, kind: e.target.value })}>
             {Object.entries(KIND_LABEL).map(([k, l]) => (
               <option key={k} value={k}>
@@ -111,48 +108,44 @@ export function ImportManual({ vehicle, onClose }: { vehicle?: Vehicle; onClose:
             ))}
           </select>
         </Field>
-        <Field label="Publisher">
-          <input type="text" value={meta.publisher} onChange={(e) => setMeta({ ...meta, publisher: e.target.value })} placeholder="e.g. Nissan North America" />
+        <Field label={t("Publisher")}>
+          <input type="text" value={meta.publisher} onChange={(e) => setMeta({ ...meta, publisher: e.target.value })} placeholder={t("e.g. Nissan North America")} />
         </Field>
       </div>
-      <Field label="Where it came from (link)" error={fe("source_url")}>
+      <Field label={t("Where it came from (link)")} error={fe("source_url")}>
         <input type="url" value={meta.source_url} onChange={(e) => setMeta({ ...meta, source_url: e.target.value })} placeholder="https://" />
       </Field>
       <fieldset>
-        <legend className="label">Applies to</legend>
-        <div className="segmented" role="radiogroup" aria-label="Applies to">
+        <legend className="label">{t("Applies to")}</legend>
+        <div className="segmented" role="radiogroup" aria-label={t("Applies to")}>
           {vehicle && (
             <label>
-              <input type="radio" checked={link === "vehicle"} onChange={() => setLink("vehicle")} /> This vehicle
-            </label>
+              <input type="radio" checked={link === "vehicle"} onChange={() => setLink("vehicle")} />{" "}{t("This vehicle")}</label>
           )}
           <label>
-            <input type="radio" checked={link === "model"} onChange={() => setLink("model")} /> A make and model
-          </label>
+            <input type="radio" checked={link === "model"} onChange={() => setLink("model")} />{" "}{t("A make and model")}</label>
           <label>
-            <input type="radio" checked={link === "none"} onChange={() => setLink("none")} /> Nothing yet
-          </label>
+            <input type="radio" checked={link === "none"} onChange={() => setLink("none")} />{" "}{t("Nothing yet")}</label>
         </div>
         {link === "model" && (
           <div className="grid mt-2" style={{ gridTemplateColumns: "1fr 1fr 100px 100px" }}>
-            <Field label="Make">
+            <Field label={t("Make")}>
               <input type="text" value={model.make} onChange={(e) => setModel({ ...model, make: e.target.value })} />
             </Field>
-            <Field label="Model (optional)">
+            <Field label={t("Model (optional)")}>
               <input type="text" value={model.model} onChange={(e) => setModel({ ...model, model: e.target.value })} />
             </Field>
-            <Field label="From year">
+            <Field label={t("From year")}>
               <input type="number" value={model.from} onChange={(e) => setModel({ ...model, from: e.target.value })} />
             </Field>
-            <Field label="To year">
+            <Field label={t("To year")}>
               <input type="number" value={model.to} onChange={(e) => setModel({ ...model, to: e.target.value })} />
             </Field>
           </div>
         )}
       </fieldset>
       <label className="check">
-        <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> I'm allowed to keep this copy (for example, I downloaded it from the publisher or bought it).
-      </label>
+        <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />{" "}{t("I'm allowed to keep this copy (for example, I downloaded it from the publisher or bought it).")}</label>
       {error != null && !errorField(error) && <div className="notice bad">{errorMessage(error)}</div>}
     </Modal>
   );

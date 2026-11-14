@@ -9,6 +9,7 @@ import { useApp, toast } from "../../store";
 import { Badge, cx, ErrorNote, PageHead, Spinner, Tabs } from "../../ui";
 import { money } from "../../lib/format";
 import { vehicleTitle } from "../vehicles/Garage";
+import { t, tx } from "../../i18n";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const yearStart = () => `${new Date().getFullYear()}-01-01`;
@@ -18,14 +19,14 @@ export default function Reports() {
   const tab = route.tab ?? "reports";
   return (
     <div className="page wide">
-      <PageHead title="Reports" sub="Computed from your stored records. Print to PDF, or export to CSV or Excel." />
+      <PageHead title={t("Reports")} sub={t("Computed from your stored records. Print to PDF, or export to CSV or Excel.")} />
       <Tabs
-        label="Reports"
+        label={t("Reports")}
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: "reports", label: "Reports" },
-          { id: "quality", label: "Data Quality Center" },
+          { id: "reports", label: t("Reports") },
+          { id: "quality", label: t("Data Quality Center") },
         ]}
       />
       {tab === "reports" ? <ReportBrowser /> : <Quality />}
@@ -49,7 +50,7 @@ function ReportBrowser() {
     if (!path) return;
     try {
       const n = await call<number>("report_export", { query, path });
-      toast(`Exported ${n} rows`);
+      toast(t("Exported {0} rows", n));
     } catch (e) {
       toast(errorMessage(e), { tone: "bad" });
     }
@@ -57,7 +58,7 @@ function ReportBrowser() {
   const isMoney = (h: string) => /value|cost|price|revenue|profit|total|amount|parts|labor|tax|spend/i.test(h) && !/units|count|qty/i.test(h);
   return (
     <div className="flex gap-4" style={{ alignItems: "flex-start" }}>
-      <nav className="card no-print" style={{ width: 250, flex: "none", padding: 8 }} aria-label="Reports">
+      <nav className="card no-print" style={{ width: 250, flex: "none", padding: 8 }} aria-label={t("Reports")}>
         {groups.map((g) => (
           <div key={g} className="mb-2">
             <p className="label" style={{ margin: "6px 8px" }}>
@@ -77,17 +78,15 @@ function ReportBrowser() {
         <div className="row no-print">
           {info?.uses_dates && (
             <>
-              <label className="row small">
-                From <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <label className="row small">{t("From")}{" "}<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
               </label>
-              <label className="row small">
-                To <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <label className="row small">{t("To")}{" "}<input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
               </label>
             </>
           )}
           {info?.needs_vehicle && (
-            <select value={vid} onChange={(e) => setVid(e.target.value)} aria-label="Vehicle">
-              <option value="">Choose a vehicle…</option>
+            <select value={vid} onChange={(e) => setVid(e.target.value)} aria-label={t("Vehicle")}>
+              <option value="">{t("Choose a vehicle…")}</option>
               {vehicles.data?.map((v) => (
                 <option key={v.id} value={v.id}>
                   {vehicleTitle(v)}
@@ -97,24 +96,21 @@ function ReportBrowser() {
           )}
           <span className="flex-1" />
           <button className="btn" onClick={() => window.print()} disabled={!r.data}>
-            <Printer size={16} aria-hidden /> Print / PDF
-          </button>
+            <Printer size={16} aria-hidden />{" "}{t("Print / PDF")}</button>
           <button className="btn" onClick={() => exportTo("csv")} disabled={!r.data}>
-            <Download size={16} aria-hidden /> CSV
-          </button>
+            <Download size={16} aria-hidden />{" "}{t("CSV")}</button>
           <button className="btn" onClick={() => exportTo("xlsx")} disabled={!r.data}>
-            <Download size={16} aria-hidden /> Excel
-          </button>
+            <Download size={16} aria-hidden />{" "}{t("Excel")}</button>
         </div>
-        {info?.needs_vehicle && !vid && <p className="muted">Choose a vehicle.</p>}
-        {r.isFetching && <Spinner label="Working out the report" />}
+        {info?.needs_vehicle && !vid && <p className="muted">{t("Choose a vehicle.")}</p>}
+        {r.isFetching && <Spinner label={t("Working out the report")} />}
         {r.isError && <ErrorNote error={r.error} />}
         {r.data && (
           <article className="print-sheet stack" style={{ background: "var(--panel)", color: "var(--text)" }}>
             <div>
               <h2 style={{ fontSize: 18 }}>{r.data.title}</h2>
               <p className="small muted">
-                {info?.uses_dates && `${from} to ${to} · `}
+                {info?.uses_dates && t("{0} to {1} · ", from, to)}
                 {r.data.note}
               </p>
             </div>
@@ -131,7 +127,7 @@ function ReportBrowser() {
               </dl>
             )}
             {r.data.rows.length === 0 ? (
-              <p className="muted">No records for this report{info?.uses_dates ? " in this period" : ""}.</p>
+              <p className="muted">{tx("No records for this report{0}.", info?.uses_dates ? t(" in this period") : "")}</p>
             ) : (
               <div className="table-wrap" style={{ maxHeight: "none", boxShadow: "none" }}>
                 <table>
@@ -168,13 +164,13 @@ function ReportBrowser() {
 function Quality() {
   const go = useApp((s) => s.go);
   const q = useCmd<IssueGroup[]>("data_quality");
-  if (q.isPending) return <Spinner label="Checking your data" />;
+  if (q.isPending) return <Spinner label={t("Checking your data")} />;
   if (q.isError) return <ErrorNote error={q.error} />;
   const total = q.data!.reduce((n, g) => n + g.issues.length, 0);
   return (
     <div className="stack">
       <div className={`notice ${total ? "warn" : "ok"} row`}>
-        <ShieldCheck size={16} aria-hidden /> {total ? `${total} things to look at. Fixing them makes parts matching, prices and reports more reliable.` : "No gaps or conflicts found."}
+        <ShieldCheck size={16} aria-hidden /> {total ? t("{0} things to look at. Fixing them makes parts matching, prices and reports more reliable.", total) : t("No gaps or conflicts found.")}
       </div>
       {q.data!
         .filter((g) => g.issues.length > 0)
@@ -188,7 +184,7 @@ function Quality() {
               {g.issues.map((i) => (
                 <li key={i.id}>
                   <button className="btn link" style={{ padding: 0 }} onClick={() => go({ page: i.kind as "vehicle" | "part" | "item", id: i.id, tab: i.kind === "vehicle" ? "specs" : undefined })}>
-                    {i.title || "(untitled)"}
+                    {i.title || t("(untitled)")}
                   </button>
                   <span className="small muted">{i.detail}</span>
                 </li>

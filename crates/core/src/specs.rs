@@ -101,6 +101,7 @@ pub const FIELDS: &[SpecField] = &[
     f("differential_fluid", "Differential fluid", MAINTENANCE, None, false, false),
     f("spark_plug", "Spark plugs", MAINTENANCE, None, false, false),
     f("battery", "Battery", MAINTENANCE, None, false, false),
+    f("wheel_nut_torque", "Wheel nut torque", MAINTENANCE, Some("lb_ft"), false, false),
     f("tire_pressure_front", "Front tire pressure", MAINTENANCE, Some("psi"), false, false),
     f("tire_pressure_rear", "Rear tire pressure", MAINTENANCE, Some("psi"), false, false),
     f("service_intervals", "Recommended service intervals", MAINTENANCE, None, false, false),

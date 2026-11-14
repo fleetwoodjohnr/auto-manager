@@ -249,6 +249,44 @@ try {
   await click(b, "Brake pads", { exact: true });
   await b.waitUntil(() => b.execute(() => document.querySelector('[aria-label="Search inventory"]').value === "BP-100"), { timeout: 10000, timeoutMsg: "the saved search didn't restore the filter" });
   step("saved an inventory search and brought it back");
+
+  // Service bulletins for the model, and one added to the library.
+  const sentraId = (await invoke(b, "vehicle_recent", {})).find((v) => v.model === "Sentra").id;
+  await nav(b, "My Vehicles");
+  await click(b, "Recent lookups");
+  await click(b, "Sentra");
+  await click(b, "Recalls & Safety", { exact: true });
+  await waitText(b, "123 from NHTSA");
+  await fill(b, "Filter bulletins", "VIN PLATE");
+  await click(b, "NTB09-131C");
+  await click(b, "Add to library");
+  await waitText(b, "to Manuals", 30000);
+  const docs = await invoke(b, "manual_list", { vehicleId: sentraId });
+  assert.ok(docs.some((d) => d.kind === "tsb" && d.source_url.includes("/odi/tsbs/")), JSON.stringify(docs.map((d) => d.title)));
+  step("listed the model's 123 service bulletins and added one to the library");
+
+  // Values found in the vehicle's own manual, saved with the page cited.
+  const owners = path.join(dataDir, "sentra-owners.pdf");
+  writeFileSync(owners, tinyPdf("Engine oil (with filter) 4.4 qt. Recommended cold tire pressure: Front 33 psi, Rear 33 psi."));
+  await invoke(b, "manual_import", { path: owners, meta: { title: "Sentra owner's manual", kind: "owner", publisher: "", source_url: "", license_note: "" }, links: [{ vehicle_id: sentraId }] });
+  await nav(b, "Manuals & Docs");
+  await b.execute(() => [...document.querySelectorAll(".gt-row")].find((r) => r.textContent.includes("Sentra owner's manual"))?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+  await click(b, "Search", { exact: true });
+  await click(b, "Make searchable");
+  await waitText(b, "is searchable", 30000);
+  await nav(b, "My Vehicles");
+  await click(b, "Recent lookups");
+  await click(b, "Sentra");
+  await click(b, "Full Specifications", { exact: true });
+  await click(b, "Find values in your manuals");
+  await waitText(b, "Engine oil capacity: 4.4");
+  await click(b, "Use this value");
+  await b.waitUntil(async () => (await invoke(b, "vehicle_detail", { id: sentraId })).specs.some((s) => s.key === "oil_capacity" && s.value === "4.4" && s.confidence === "manual_ref" && s.source_ref === "Sentra owner's manual, page 1"), {
+    timeout: 10000,
+    timeoutMsg: "the oil capacity wasn't saved with its page",
+  });
+  await click(b, "Close", { exact: true });
+  step("found the oil capacity in the owner's manual and saved it with the page cited");
   fx2.close();
 } finally {
   await app.close();

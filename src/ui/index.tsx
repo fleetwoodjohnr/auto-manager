@@ -9,6 +9,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { errorMessage, isAppError } from "../api/ipc";
 import { useApp } from "../store";
 import type { FitStatus } from "../api/bindings/FitStatus";
+import { t, tx } from "../i18n";
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
@@ -21,10 +22,10 @@ export function Badge({ tone = "neutral", children, title }: { tone?: "neutral" 
 }
 
 const FIT_LABEL: Record<FitStatus, string> = {
-  confirmed: "Confirmed fit",
-  conditional: "Conditional fit",
-  possible: "Possible fit",
-  not_compatible: "Not compatible",
+  confirmed: t("Confirmed fit"),
+  conditional: t("Conditional fit"),
+  possible: t("Possible fit"),
+  not_compatible: t("Not compatible"),
   unknown: "Unknown",
 };
 export const fitLabel = (s: FitStatus) => FIT_LABEL[s];
@@ -34,9 +35,9 @@ export function FitBadge({ status }: { status: FitStatus }) {
 }
 
 export function StockBadge({ available, min }: { available: number; min?: number }) {
-  if (available <= 0) return <Badge tone="bad">Out of stock</Badge>;
-  if (min && available <= min) return <Badge tone="warn">Low · {available}</Badge>;
-  return <Badge tone="ok">In stock · {available}</Badge>;
+  if (available <= 0) return <Badge tone="bad">{t("Out of stock")}</Badge>;
+  if (min && available <= min) return <Badge tone="warn">{tx("Low · {0}", available)}</Badge>;
+  return <Badge tone="ok">{tx("In stock · {0}", available)}</Badge>;
 }
 
 export function Spinner({ label }: { label?: string }) {
@@ -87,9 +88,7 @@ export function PageHead({ title, sub, children, back }: { title: ReactNode; sub
     <div className="page-head">
       <div className="min-w-0">
         {back && (
-          <button className="btn link mb-1" style={{ paddingLeft: 0 }} onClick={goBack}>
-            ← Back
-          </button>
+          <button className="btn link mb-1" style={{ paddingLeft: 0 }} onClick={goBack}>{t("← Back")}</button>
         )}
         <h1>{title}</h1>
         {sub && <p>{sub}</p>}
@@ -116,7 +115,7 @@ export function Modal({ open, title, onClose, children, footer, wide }: { open: 
         <>
           <div className="dialog-head">
             <h2 id={id}>{title}</h2>
-            <button className="icon-btn" aria-label="Close" title="Close" onClick={() => ref.current?.close()}>
+            <button className="icon-btn" aria-label={t("Close")} title={t("Close")} onClick={() => ref.current?.close()}>
               <X size={16} aria-hidden />
             </button>
           </div>
@@ -177,20 +176,20 @@ export function Toasts() {
   const { toasts, dismiss } = useApp();
   return (
     <div className="toasts" role="status" aria-live="polite">
-      {toasts.map((t) => (
-        <div key={t.id} className={cx("toast", t.tone === "bad" && "bad")}>
-          <span>{t.message}</span>
-          {t.action && (
+      {toasts.map((item) => (
+        <div key={item.id} className={cx("toast", item.tone === "bad" && "bad")}>
+          <span>{item.message}</span>
+          {item.action && (
             <button
               onClick={() => {
-                t.action?.run();
-                dismiss(t.id);
+                item.action?.run();
+                dismiss(item.id);
               }}
             >
-              {t.action.label}
+              {item.action.label}
             </button>
           )}
-          <button aria-label="Dismiss" onClick={() => dismiss(t.id)}>
+          <button aria-label={t("Dismiss")} onClick={() => dismiss(item.id)}>
             <X size={14} aria-hidden />
           </button>
         </div>
@@ -207,7 +206,7 @@ export interface MenuItem {
   disabled?: boolean;
 }
 
-export function ActionsMenu({ items, label = "More actions" }: { items: (MenuItem | null)[]; label?: string }) {
+export function ActionsMenu({ items, label = t("More actions") }: { items: (MenuItem | null)[]; label?: string }) {
   return (
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger asChild>
@@ -405,9 +404,7 @@ export function useConfirm() {
       onClose={() => close(false)}
       footer={
         <>
-          <button className="btn" onClick={() => close(false)}>
-            Cancel
-          </button>
+          <button className="btn" onClick={() => close(false)}>{t("Cancel")}</button>
           <button className="btn danger" onClick={() => close(true)} autoFocus>
             {state?.action}
           </button>

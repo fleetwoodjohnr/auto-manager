@@ -11,6 +11,7 @@ import { Badge, ErrorNote, Field, Modal, Spinner, Tabs } from "../../ui";
 import { closePdf, loadManual, outline, type PdfDoc } from "../../lib/pdf";
 import { indexInBackground, KIND_LABEL } from "./ImportManual";
 import { Snippet } from "../vehicles/VehicleManuals";
+import { t, tx } from "../../i18n";
 
 const GAP = 16;
 
@@ -35,7 +36,7 @@ function PageCanvas({ doc, n, scale, width, height }: { doc: PdfDoc; n: number; 
     };
   }, [doc, n, scale]);
   return (
-    <div className="pdf-page" style={{ width, height }} aria-label={`Page ${n}`} role="img">
+    <div className="pdf-page" style={{ width, height }} aria-label={t("Page {0}", n)} role="img">
       <canvas ref={canvas} />
     </div>
   );
@@ -110,44 +111,39 @@ export default function Viewer() {
   return (
     <div className="viewer" style={{ height: "100%" }}>
       <div className="toolbar no-print">
-        <button className="btn ghost" onClick={() => go("manuals")}>
-          ← Library
-        </button>
+        <button className="btn ghost" onClick={() => go("manuals")}>{t("← Library")}</button>
         <strong className="truncate" style={{ maxWidth: 320 }}>
           {meta.data?.title}
         </strong>
         {meta.data && <Badge>{KIND_LABEL[meta.data.kind]}</Badge>}
         <span className="flex-1" />
-        <button className="icon-btn" aria-label="Previous page" title="Previous page" onClick={() => goPage(page - 1)} disabled={page <= 1}>
+        <button className="icon-btn" aria-label={t("Previous page")} title={t("Previous page")} onClick={() => goPage(page - 1)} disabled={page <= 1}>
           <ChevronLeft size={16} aria-hidden />
         </button>
-        <input type="number" value={page} min={1} max={total} onChange={(e) => goPage(Number(e.target.value))} style={{ width: 70 }} aria-label="Page" />
-        <span className="small muted">of {total || "…"}</span>
-        <button className="icon-btn" aria-label="Next page" title="Next page" onClick={() => goPage(page + 1)} disabled={page >= total}>
+        <input type="number" value={page} min={1} max={total} onChange={(e) => goPage(Number(e.target.value))} style={{ width: 70 }} aria-label={t("Page")} />
+        <span className="small muted">{tx("of {0}", total || "…")}</span>
+        <button className="icon-btn" aria-label={t("Next page")} title={t("Next page")} onClick={() => goPage(page + 1)} disabled={page >= total}>
           <ChevronRight size={16} aria-hidden />
         </button>
-        <button className="icon-btn" aria-label="Zoom out" title="Zoom out" onClick={() => setZoom((z) => Math.max(0.3, z / 1.2))}>
+        <button className="icon-btn" aria-label={t("Zoom out")} title={t("Zoom out")} onClick={() => setZoom((z) => Math.max(0.3, z / 1.2))}>
           <ZoomOut size={16} aria-hidden />
         </button>
         <span className="small muted" style={{ minWidth: 40, textAlign: "center" }}>
           {Math.round(zoom * 100)}%
         </span>
-        <button className="icon-btn" aria-label="Zoom in" title="Zoom in" onClick={() => setZoom((z) => Math.min(5, z * 1.2))}>
+        <button className="icon-btn" aria-label={t("Zoom in")} title={t("Zoom in")} onClick={() => setZoom((z) => Math.min(5, z * 1.2))}>
           <ZoomIn size={16} aria-hidden />
         </button>
-        <button className="icon-btn" aria-label="Fit width" title="Fit width" onClick={fitWidth}>
+        <button className="icon-btn" aria-label={t("Fit width")} title={t("Fit width")} onClick={fitWidth}>
           <Maximize2 size={16} aria-hidden />
         </button>
-        <button className="btn" onClick={() => setAdding({ page, kind: "bookmark", label: `Page ${page}`, body: "", vehicle_id: null })}>
-          <Bookmark size={14} aria-hidden /> Bookmark
-        </button>
+        <button className="btn" onClick={() => setAdding({ page, kind: "bookmark", label: t("Page {0}", page), body: "", vehicle_id: null })}>
+          <Bookmark size={14} aria-hidden />{" "}{t("Bookmark")}</button>
         <button className="btn" onClick={() => setAdding({ page, kind: "note", label: "", body: "", vehicle_id: null })}>
-          <StickyNote size={14} aria-hidden /> Note
-        </button>
-        <button className="btn" title="Record that a component is shown on this page, for Where Is It?" onClick={() => setAdding({ page, kind: "component", label: "", body: "", vehicle_id: null })}>
-          <MapPin size={14} aria-hidden /> Component here
-        </button>
-        <button className="icon-btn" aria-label="Print this page" title="Print this page" onClick={() => printPages(page, page)}>
+          <StickyNote size={14} aria-hidden />{" "}{t("Note")}</button>
+        <button className="btn" title={t("Record that a component is shown on this page, for Where Is It?")} onClick={() => setAdding({ page, kind: "component", label: "", body: "", vehicle_id: null })}>
+          <MapPin size={14} aria-hidden />{" "}{t("Component here")}</button>
+        <button className="icon-btn" aria-label={t("Print this page")} title={t("Print this page")} onClick={() => printPages(page, page)}>
           <Printer size={16} aria-hidden />
         </button>
       </div>
@@ -158,21 +154,20 @@ export default function Viewer() {
       )}
       {doc.isPending && (
         <div className="p-4">
-          <Spinner label="Opening document" /> Opening…
-        </div>
+          <Spinner label={t("Opening document")} />{" "}{t("Opening…")}</div>
       )}
       {d && (
         <Group orientation="horizontal" style={{ flex: 1, minHeight: 0 }} className="no-print">
           <Panel defaultSize="24" minSize={180} collapsible>
             <div className="side">
               <Tabs
-                label="Document panels"
+                label={t("Document panels")}
                 value={side}
                 onChange={setSide}
                 tabs={[
-                  { id: "contents", label: "Contents" },
-                  { id: "notes", label: "Notes" },
-                  { id: "search", label: "Search" },
+                  { id: "contents", label: t("Contents") },
+                  { id: "notes", label: t("Notes") },
+                  { id: "search", label: t("Search") },
                 ]}
               />
               {side === "contents" && <Contents doc={d} onGo={goPage} />}
@@ -182,7 +177,7 @@ export default function Viewer() {
           </Panel>
           <Separator className="resize-handle" />
           <Panel>
-            <div className="pages" ref={scroller} onScroll={onScroll} style={{ height: "100%" }} tabIndex={0} aria-label="Document pages">
+            <div className="pages" ref={scroller} onScroll={onScroll} style={{ height: "100%" }} tabIndex={0} aria-label={t("Document pages")}>
               <div style={{ height: v.getTotalSize(), position: "relative" }}>
                 {base &&
                   v.getVirtualItems().map((it) => (
@@ -198,7 +193,7 @@ export default function Viewer() {
       {printing && (
         <div className="print-only">
           {printing.map((u, i) => (
-            <img key={i} src={u} alt={`Page ${page + i}`} style={{ width: "100%", pageBreakAfter: "always" }} />
+            <img key={i} src={u} alt={t("Page {0}", page + i)} style={{ width: "100%", pageBreakAfter: "always" }} />
           ))}
         </div>
       )}
@@ -209,10 +204,10 @@ export default function Viewer() {
 
 function Contents({ doc, onGo }: { doc: PdfDoc; onGo: (n: number) => void }) {
   const q = useQuery({ queryKey: ["outline", doc.fingerprints[0]], queryFn: () => outline(doc), staleTime: Infinity });
-  if (q.isPending) return <Spinner label="Reading contents" />;
-  if (!q.data?.length) return <p className="small muted p-2">This document has no table of contents. Use page numbers, search or bookmarks.</p>;
+  if (q.isPending) return <Spinner label={t("Reading contents")} />;
+  if (!q.data?.length) return <p className="small muted p-2">{t("This document has no table of contents. Use page numbers, search or bookmarks.")}</p>;
   return (
-    <nav aria-label="Contents">
+    <nav aria-label={t("Contents")}>
       {q.data.map((o, i) => (
         <button key={i} style={{ paddingLeft: 8 + o.depth * 12 }} onClick={() => o.page && onGo(o.page)} disabled={!o.page}>
           {o.title} {o.page ? <span className="muted small">· {o.page}</span> : null}
@@ -225,7 +220,7 @@ function Contents({ doc, onGo }: { doc: PdfDoc; onGo: (n: number) => void }) {
 function Notes({ manualId, onGo }: { manualId: string; onGo: (n: number) => void }) {
   const q = useCmd<Annotation[]>("annotation_list", { manualId, kind: null });
   const del = useAction<{ id: string }>("annotation_delete", { invalidate: ["annotation_list"] });
-  if (!q.data?.length) return <p className="small muted p-2">Bookmarks, notes and component locations you add appear here.</p>;
+  if (!q.data?.length) return <p className="small muted p-2">{t("Bookmarks, notes and component locations you add appear here.")}</p>;
   return (
     <ul className="items" style={{ maxHeight: "none" }}>
       {q.data.map((a) => (
@@ -237,7 +232,7 @@ function Notes({ manualId, onGo }: { manualId: string; onGo: (n: number) => void
             </button>
             {a.body && <div className="small muted">{a.body}</div>}
           </div>
-          <button className="icon-btn" aria-label={`Delete ${a.label}`} onClick={() => del.mutate({ id: a.id })}>
+          <button className="icon-btn" aria-label={t("Delete {0}", a.label)} onClick={() => del.mutate({ id: a.id })}>
             <Trash2 size={13} aria-hidden />
           </button>
         </li>
@@ -254,11 +249,9 @@ function InDocSearch({ manual, onGo, onIndex }: { manual?: Manual; onGo: (n: num
   if (manual && !manual.indexed) {
     return (
       <div className="p-2 small">
-        <p>This document's text hasn't been read yet, so it can't be searched.</p>
-        <button className="btn" onClick={onIndex}>
-          Make searchable
-        </button>
-        <p className="muted mt-1">Scanned (image-only) PDFs have no text to search.</p>
+        <p>{t("This document's text hasn't been read yet, so it can't be searched.")}</p>
+        <button className="btn" onClick={onIndex}>{t("Make searchable")}</button>
+        <p className="muted mt-1">{t("Scanned (image-only) PDFs have no text to search.")}</p>
       </div>
     );
   }
@@ -271,15 +264,15 @@ function InDocSearch({ manual, onGo, onIndex }: { manual?: Manual; onGo: (n: num
           setQ(text.trim());
         }}
       >
-        <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Find in this document" style={{ flex: 1 }} aria-label="Find in this document" />
-        <button className="icon-btn" aria-label="Find">
+        <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder={t("Find in this document")} style={{ flex: 1 }} aria-label={t("Find in this document")} />
+        <button className="icon-btn" aria-label={t("Find")}>
           <Search size={15} aria-hidden />
         </button>
       </form>
-      {r.data?.length === 0 && <p className="small muted p-2">Not found.</p>}
+      {r.data?.length === 0 && <p className="small muted p-2">{t("Not found.")}</p>}
       {r.data?.map((h) => (
         <button key={h.page} onClick={() => onGo(h.page)}>
-          <strong>Page {h.page}</strong>
+          <strong>{tx("Page {0}", h.page)}</strong>
           <div className="small muted">
             <Snippet text={h.snippet} />
           </div>
@@ -291,8 +284,8 @@ function InDocSearch({ manual, onGo, onIndex }: { manual?: Manual; onGo: (n: num
 
 function AddAnnotation({ manualId, initial, onClose }: { manualId: string; initial: AnnotationInput; onClose: () => void }) {
   const [a, setA] = useState(initial);
-  const add = useAction<{ manualId: string; input: AnnotationInput }>("annotation_add", { invalidate: ["annotation_list", "where_is"], success: "Saved", silentError: true });
-  const title = a.kind === "bookmark" ? "Bookmark this page" : a.kind === "note" ? "Note on this page" : "Component shown on this page";
+  const add = useAction<{ manualId: string; input: AnnotationInput }>("annotation_add", { invalidate: ["annotation_list", "where_is"], success: t("Saved"), silentError: true });
+  const title = a.kind === "bookmark" ? t("Bookmark this page") : a.kind === "note" ? t("Note on this page") : t("Component shown on this page");
   return (
     <Modal
       open
@@ -300,20 +293,16 @@ function AddAnnotation({ manualId, initial, onClose }: { manualId: string; initi
       onClose={onClose}
       footer={
         <>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn primary" onClick={() => add.mutate({ manualId, input: a }, { onSuccess: onClose })}>
-            Save
-          </button>
+          <button className="btn" onClick={onClose}>{t("Cancel")}</button>
+          <button className="btn primary" onClick={() => add.mutate({ manualId, input: a }, { onSuccess: onClose })}>{t("Save")}</button>
         </>
       }
     >
-      <p className="muted">Page {a.page}</p>
-      <Field label={a.kind === "component" ? "Component" : "Title"} hint={a.kind === "component" ? "e.g. Starter motor. Where Is It? will find this page for it." : undefined}>
+      <p className="muted">{tx("Page {0}", a.page)}</p>
+      <Field label={a.kind === "component" ? t("Component") : t("Title")} hint={a.kind === "component" ? t("e.g. Starter motor. Where Is It? will find this page for it.") : undefined}>
         <input type="text" value={a.label} onChange={(e) => setA({ ...a, label: e.target.value })} autoFocus />
       </Field>
-      <Field label={a.kind === "component" ? "Where it is / how to reach it (optional)" : "Note"}>
+      <Field label={a.kind === "component" ? t("Where it is / how to reach it (optional)") : t("Note")}>
         <textarea value={a.body} onChange={(e) => setA({ ...a, body: e.target.value })} />
       </Field>
       {add.error != null && <div className="notice bad">{String((add.error as { message?: string }).message ?? add.error)}</div>}

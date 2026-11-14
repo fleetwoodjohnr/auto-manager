@@ -20,3 +20,6 @@ e2e/.work/
 .idea
 .vscode/*
 /public/pdfjs/
+
+# Fetched by scripts/fetch-ocr-models.mjs (pinned SHA-256)
+/src-tauri/resources/ocr/*.onnx
