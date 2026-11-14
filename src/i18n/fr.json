@@ -922,6 +922,7 @@
  "Plug in any USB barcode scanner (it works like a keyboard), or use the camera or a photo.": "Branchez n'importe quel lecteur de codes-barres USB (il fonctionne comme un clavier), ou utilisez la caméra ou une photo.",
  "Point the camera at the VIN plate (base of the windshield) or the barcode on the driver's door-jamb label, or choose a photo of either. Hold it steady and fill the frame.": "Pointez la caméra vers la plaque du NIV (à la base du pare-brise) ou vers le code-barres de l'étiquette du montant de la porte du conducteur, ou choisissez une photo de l'un ou l'autre. Tenez-la immobile et remplissez le cadre.",
  "Point the camera at the part's barcode or QR code, or choose a photo of it.": "Pointez la caméra vers le code-barres ou le code QR de la pièce, ou choisissez-en une photo.",
+ "Port, e.g. COM3, /dev/ttyUSB0 or /dev/rfcomm0": "Port, p. ex. COM3, /dev/ttyUSB0 ou /dev/rfcomm0",
  "Position (optional)": "Position (facultatif)",
  "Position 9 is {0}; the calculation gives {1}.": "La position 9 est {0}; le calcul donne {1}.",
  "Possible causes (not a diagnosis)": "Causes possibles (pas un diagnostic)",

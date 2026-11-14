@@ -35,14 +35,13 @@ export function ObdScanner() {
     <div className="stack">
       <div className="notice info">{t("Connect an ELM327-compatible adapter (USB, or Bluetooth paired so it appears as a serial port), turn the ignition on, then scan. Auto Manager only")}{" "}<strong>reads</strong>{t(": trouble codes, freeze-frame data, live values and the VIN. It never clears codes or sends commands that change anything in the vehicle. Tested against a simulated adapter; results with real adapters vary by adapter and vehicle.")}</div>
       <div className="row">
-        <select value={port} onChange={(e) => setPort(e.target.value)} aria-label={t("Adapter port")}>
-          <option value="">{ports.data?.length ? t("Choose the adapter's port…") : t("No serial ports found")}</option>
+        {/* Detected ports are suggested; any path can be typed (e.g. a Bluetooth /dev/rfcomm0 the system doesn't list). */}
+        <input type="text" list="am-obd-ports" value={port} onChange={(e) => setPort(e.target.value)} aria-label={t("Adapter port")} placeholder={ports.data?.length ? t("Choose the adapter's port…") : t("Port, e.g. COM3, /dev/ttyUSB0 or /dev/rfcomm0")} className="mono" style={{ width: 260 }} />
+        <datalist id="am-obd-ports">
           {ports.data?.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
+            <option key={p} value={p} />
           ))}
-        </select>
+        </datalist>
         <button className="icon-btn" aria-label={t("Look for ports again")} title={t("Look for ports again")} onClick={() => ports.refetch()}>
           <RefreshCw size={15} aria-hidden />
         </button>
@@ -54,7 +53,7 @@ export function ObdScanner() {
             </option>
           ))}
         </select>
-        <button className="btn primary" disabled={!port || busy} onClick={scan}>
+        <button className="btn primary" disabled={!port.trim() || busy} onClick={scan}>
           {busy ? <Spinner /> : <Cable size={16} aria-hidden />}{" "}{t("Scan")}</button>
       </div>
       {error && <div className="notice bad">{error}</div>}

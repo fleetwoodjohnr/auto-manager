@@ -25,7 +25,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md). In short:
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked            # 258 tests: core, OBD, migrations, providers (mocked)
+cargo test --workspace --locked            # 259 tests: core, OBD, migrations, providers (mocked)
 npx tsc --noEmit && npm test && npm run build
 node --test scripts/release-manifest.test.mjs
 node scripts/check-version.mjs
@@ -47,6 +47,7 @@ node e2e/workflows.mjs                      # acceptance workflows A–D, attach
                                             # values from manuals, accessibility of data pages
 node e2e/sync.mjs                           # two computers syncing through one folder
 node e2e/scan.mjs                           # camera (WebKit mock) and VIN photo reading
+node e2e/obd.mjs                            # OBD-II scanner against the stand-in ELM327 (needs python3)
 node e2e/a11y.mjs                           # axe-core WCAG 2.0–2.2 A/AA on every page, both themes
 ```
 

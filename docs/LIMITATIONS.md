@@ -12,7 +12,7 @@ This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and wa
 
 | Gap | Why |
 |---|---|
-| OBD-II with a real adapter | Tested against a scripted adapter only. Needs real hardware, or an independent ELM327 emulator (see TEST_REPORT.md) |
+| OBD-II with a real adapter | Tested end to end through a real serial port against a stand-in ELM327 (CR line endings, echo, chunked and multi-frame replies), in the app and in CI. Not yet confirmed with physical adapters, whose quirks vary by make and clone |
 | Per-VIN open-recall status | No public API exists. NHTSA's VIN check is an interactive web page only; the app links to it and records your answer |
 | Free torque, fluid and maintenance databases | None exists. Auto Manager **finds these values in your own manuals** and saves them with the page cited (below) |
 | Windows and macOS code signing | Needs paid certificates; first-run Gatekeeper/SmartScreen warnings until then. The update signature check is separate and always on |
@@ -86,7 +86,7 @@ This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and wa
 | Estimates, jobs, invoices, PDF | Done | PDF via the print dialog |
 | Maintenance records, intervals, due items | Done | **Intervals can be found in your imported manuals** ("every 5,000 miles or 6 months"; km converted) and added with the page cited. No generic schedules are shipped. U |
 | OBD-II code reference | Done | 9,533 generic codes (OBDex, CC0) |
-| OBD-II connectivity | Partial | Read-only ELM327 over serial ports. Tested against a scripted adapter; see *What's left* |
+| OBD-II connectivity | Done (simulated adapter); physical adapters not yet tried | Read-only ELM327 over serial ports; any port path can be typed (e.g. a Bluetooth `/dev/rfcomm0` the system doesn't list). U and E2E against `crates/obd/tests/elm327_sim.py` on a pseudo-terminal: VIN, stored codes, warning light, live values, freeze frame, unsupported data left out, never a clear-codes request. This test found and fixed a bug real adapters would have hit (replies end lines with a bare CR) |
 
 ## Manuals and interface
 

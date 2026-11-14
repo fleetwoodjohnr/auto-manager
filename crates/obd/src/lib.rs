@@ -116,7 +116,8 @@ impl<T: Transport> Elm327<T> {
         if !allowed(cmd) {
             return Err(ObdError::NotAllowed(cmd.into()));
         }
-        let r = self.t.exchange(cmd)?;
+        // Adapters end lines with a bare CR (LF only when ATL1); make them ordinary lines.
+        let r = self.t.exchange(cmd)?.replace("\r\n", "\n").replace('\r', "\n");
         let upper = r.to_uppercase();
         for bad in ["UNABLE TO CONNECT", "BUS INIT", "CAN ERROR", "BUFFER FULL"] {
             if upper.contains(bad) {

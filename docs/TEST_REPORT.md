@@ -8,7 +8,7 @@ Mocked responses are never counted as proof that a provider works. The live resu
 
 | Suite | Command | Result (2026-11-14) |
 |---|---|---|
-| Rust: core, OBD, migrations, providers, sync, scanning (recorded responses + local mock server) | `cargo test --workspace --locked` | **258 passed**, 0 failed (255 core, 3 OBD) |
+| Rust: core, OBD, migrations, providers, sync, scanning (recorded responses + local mock server) | `cargo test --workspace --locked` | **259 passed**, 0 failed (255 core, 4 OBD) |
 | Lint | `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo fmt --check`, `npx tsc --noEmit` (strict) | clean |
 | Frontend unit | `npm test` | **14 passed** (formatting, units, theme, UI kit, every text translated to Spanish and French with its slots) |
 | Release script | `node --test scripts/release-manifest.test.mjs` | 3 passed (signature verification, tamper and version checks, complete-platform manifest, changelog notes) |
@@ -44,6 +44,7 @@ Notable tests:
 - **Scanning**: a Code 39 door-jamb label decoded; a rendered VIN-plate photo read by the bundled OCR models; candidates only with a correct check digit; single misreads corrected and labelled (all candidates listed when more than one fits); nothing found inside longer character runs; non-pictures refused.
 - **Values from manuals**: a capacities page (oil 4.4 qt, 0W-20, coolant, DOT 3, engine torque only when quoted with rpm, wheel-nut torque, battery group, plug gap, front/rear pressures); intervals with km converted; nothing from unrelated text; no failure on any Unicode text (this test found and fixed two byte-offset bugs).
 - **Bulletins**: 123 communications parsed for a 2019 Sentra; document links only from static.nhtsa.gov.
+- **OBD through a serial port** (`crates/obd/tests/pty_adapter.rs`): the client against the stand-in ELM327 on a pseudo-terminal; found that adapters' bare-CR line endings broke multi-line replies (adapter name, multi-frame VIN), now fixed.
 - **OBD**: scripted CAN adapter (codes, VIN, live data, freeze frame, never sends mode 04), refusal of 8 kinds of write or unsafe requests, older protocols.
 
 ## Live provider tests
@@ -91,6 +92,7 @@ GitHub Actions (`ci.yml`) on the pushed code: format, lint, all tests and the fr
 | `e2e/smoke.mjs` | Every page in light and dark, **and in Spanish and French** (no untranslated slot or error on any page) |
 | `e2e/workflows.mjs` | Also: the model's 123 service bulletins listed and one added to the library; the oil capacity found in an imported owner's manual and saved with "page 1" cited |
 | `e2e/sync.mjs` | Two app instances (separate data folders) set up sync to one folder through the UI; a vehicle saved on the first appears on the second, a customer added on the second appears on the first; nothing readable in the folder |
+| `e2e/obd.mjs` | The OBD-II scanner screen, given the stand-in adapter's port, shows its VIN, protocol, both stored codes, the warning light, live values and freeze frame; the adapter received 37 commands, all setup or reading, never "clear codes" |
 | `e2e/scan.mjs` | The Scan dialog opens the camera (WebKit's mock device), a frame is read and no VIN is invented from the test pattern, the dialog passes the accessibility audit, and the running app's bundled OCR models read a VIN-plate photo |
 
 Picture reading takes about 1.2 s for a VIN photo and 1.9 s for a full-HD camera frame (optimized build).
@@ -120,6 +122,6 @@ The .deb and .rpm weren't installed system-wide on this machine. The update rout
 
 - Windows and macOS installers and in-app updates: the release workflow builds them on a version tag; not run yet (no release tagged). Their tests and builds pass in CI.
 - Real GitHub release updates (stable and beta): see the checklist in RELEASING.md.
-- OBD-II with real adapters, or with an independent ELM327 emulator: installing the third-party `ELM327-emulator` package wasn't permitted in this session, so the client is tested only against its scripted adapter.
+- OBD-II with a physical adapter. The client is tested through a real serial port against a stand-in ELM327 written for this project (`crates/obd/tests/elm327_sim.py`, Python standard library); installing the third-party `ELM327-emulator` package wasn't permitted in this session.
 - The camera on Windows and macOS (Linux was exercised through WebKit's mock camera).
 - Code-signed or notarized builds.
