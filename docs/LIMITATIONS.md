@@ -86,7 +86,7 @@ This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and wa
 | Estimates, jobs, invoices, PDF | Done | PDF via the print dialog |
 | Maintenance records, intervals, due items | Done | **Intervals can be found in your imported manuals** ("every 5,000 miles or 6 months"; km converted) and added with the page cited. No generic schedules are shipped. U |
 | OBD-II code reference | Done | 9,533 generic codes (OBDex, CC0) |
-| OBD-II connectivity | Done (simulated adapter); physical adapters not yet tried | Read-only ELM327 over serial ports; any port path can be typed (e.g. a Bluetooth `/dev/rfcomm0` the system doesn't list). U and E2E against `crates/obd/tests/elm327_sim.py` on a pseudo-terminal: VIN, stored codes, warning light, live values, freeze frame, unsupported data left out, never a clear-codes request. This test found and fixed a bug real adapters would have hit (replies end lines with a bare CR) |
+| OBD-II connectivity | Done (simulated adapter); physical adapters not yet tried | Read-only ELM327 over serial ports; any port path can be typed (e.g. a Bluetooth `/dev/rfcomm0` the system doesn't list). U and E2E (Linux) against `crates/obd/tests/elm327_sim.py` on a pseudo-terminal (macOS pseudo-terminals can't take serial settings, so macOS and Windows weren't exercised): VIN, stored codes, warning light, live values, freeze frame, unsupported data left out, never a clear-codes request. This test found and fixed a bug real adapters would have hit (replies end lines with a bare CR) |
 
 ## Manuals and interface
 

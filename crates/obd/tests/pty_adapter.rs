@@ -1,7 +1,11 @@
 //! The OBD client against a stand-in ELM327 on a real pseudo-terminal (tests/elm327_sim.py), so
 //! the serial port settings, echo, the '>' prompt, chunked replies and multi-frame CAN answers go
-//! through the same code as with a USB adapter. Unix only; skipped when python3 isn't available.
-#![cfg(unix)]
+//! through the same code as with a USB adapter. Skipped when python3 isn't available.
+//!
+//! Linux only: macOS pseudo-terminals refuse the serial-speed ioctl (IOSSIOSPEED) the serial
+//! library applies there ("Not a typewriter"), which real USB adapters accept; Windows has no
+//! pseudo-terminals.
+#![cfg(target_os = "linux")]
 
 use auto_manager_obd::connect_serial;
 use std::io::{BufRead, BufReader};
