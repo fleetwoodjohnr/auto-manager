@@ -39,7 +39,7 @@ export function ReserveDialog({ item, vehicleId, onClose }: { item: { id: string
     >
       <p className="muted">{item?.available} available. Reserved stock stays on the shelf but can't be sold or used elsewhere until you release it.</p>
       <Field label="Quantity" error={err && errorField(err) === "qty" ? errorMessage(err) : null}>
-        <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
+        <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
       </Field>
       <Field label="Note (optional)">
         <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Customer picking up Friday" />
@@ -106,7 +106,7 @@ export function AddToEstimate({ item, vehicleId, onClose }: { item: { id: string
         </select>
       </Field>
       <Field label="Quantity">
-        <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+        <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
       </Field>
       <label className="check">
         <input type="checkbox" checked={reserve} onChange={(e) => setReserve(e.target.checked)} /> Reserve the stock for this estimate now
@@ -173,7 +173,7 @@ export function AddToList({ part, vehicleId, onClose }: { part: { id: string; na
         </Field>
       )}
       <Field label="Quantity">
-        <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+        <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
       </Field>
       {error && <div className="notice bad">{error}</div>}
     </Modal>

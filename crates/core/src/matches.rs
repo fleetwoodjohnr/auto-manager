@@ -17,9 +17,9 @@ pub struct StockOption {
     pub item_id: String,
     pub sku: String,
     pub condition: String,
-    pub on_hand: i64,
-    pub reserved: i64,
-    pub available: i64,
+    pub on_hand: crate::qty::Qty,
+    pub reserved: crate::qty::Qty,
+    pub available: crate::qty::Qty,
     /// "ok", "low" or "out"
     pub stock_state: String,
     pub bins: String,
@@ -157,6 +157,7 @@ pub fn for_vehicle(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::qty::Qty;
     use crate::{db, inventory as inv, parts::*, providers::vpic};
 
     #[test]
@@ -225,8 +226,9 @@ mod tests {
                 cost: "4".into(),
                 price_override: Some("9.99".into()),
                 pricing_profile_id: None,
-                min_stock: 0,
-                reorder_qty: 0,
+                fractional: false,
+                min_stock: Qty::units(0),
+                reorder_qty: Qty::units(0),
                 supplier_id: None,
                 warranty: String::new(),
                 notes: String::new(),
@@ -238,7 +240,7 @@ mod tests {
             &inv::Receive {
                 item_id: item.id.clone(),
                 location_id: "loc-main".into(),
-                qty: 8,
+                qty: Qty::units(8),
                 unit_cost: None,
                 bin: None,
                 reason: String::new(),

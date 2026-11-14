@@ -17,7 +17,7 @@ pub struct Related {
     pub numbers: String,
     pub note: String,
     pub source_name: String,
-    pub available: i64,
+    pub available: crate::qty::Qty,
 }
 
 #[derive(Serialize, TS, Clone, Debug)]

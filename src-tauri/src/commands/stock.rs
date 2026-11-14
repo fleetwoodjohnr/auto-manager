@@ -243,6 +243,6 @@ pub fn export_inventory(core: State<'_, Core>, path: String) -> AppResult<usize>
 }
 
 #[tauri::command(async)]
-pub fn stock_on_hand_at(core: State<'_, Core>, location_id: String) -> AppResult<Vec<(String, i64)>> {
+pub fn stock_on_hand_at(core: State<'_, Core>, location_id: String) -> AppResult<Vec<(String, auto_manager_core::Qty)>> {
     core.read(|c| inv::on_hand_at(c, &location_id))
 }

@@ -25,9 +25,9 @@ pub struct PartListItem {
     pub name: String,
     pub brand: String,
     pub numbers: String,
-    pub qty: i64,
+    pub qty: crate::qty::Qty,
     pub note: String,
-    pub available: i64,
+    pub available: crate::qty::Qty,
 }
 
 pub fn get(conn: &Connection, id: &str) -> AppResult<PartList> {
@@ -78,9 +78,9 @@ pub fn create(conn: &Connection, name: &str, vehicle_id: Option<&str>) -> AppRes
     get(conn, &id)
 }
 
-pub fn add(conn: &Connection, list_id: &str, part_id: &str, qty: i64, note: &str) -> AppResult<PartList> {
-    if qty < 1 {
-        return Err(AppError::invalid("qty", "Quantity is at least 1."));
+pub fn add(conn: &Connection, list_id: &str, part_id: &str, qty: crate::qty::Qty, note: &str) -> AppResult<PartList> {
+    if qty <= 0 {
+        return Err(AppError::invalid("qty", "Enter a quantity above zero."));
     }
     get(conn, list_id)?;
     conn.execute(
@@ -111,5 +111,5 @@ pub fn restock_request(conn: &Connection, part_id: &str) -> AppResult<PartList> 
         Some(id) => id,
         None => create(conn, RESTOCK_LIST, None)?.id,
     };
-    add(conn, &id, part_id, 1, "")
+    add(conn, &id, part_id, crate::qty::Qty::units(1), "")
 }

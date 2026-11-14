@@ -3,6 +3,7 @@
 
 use crate::error::{AppError, AppResult};
 use crate::money;
+use crate::qty::Qty;
 use crate::{inventory, jobs, maintenance, pricing, settings};
 use rusqlite::{Connection, params};
 use rust_decimal::Decimal;
@@ -113,9 +114,9 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
             let mut rows = Vec::new();
             for i in inventory::list(conn, &inventory::ItemQuery::default())? {
                 let cost = if s.valuation_method == "standard" || i.avg_cost.is_zero() { i.cost } else { i.avg_cost };
-                let value = cost * Decimal::from(i.on_hand);
+                let value = cost * i.on_hand.dec();
                 let price = pricing::price_item(conn, &i.id, 1, &[Some(profile.id.as_str())], &s.valuation_method)?.price;
-                let retail = price.map(|p| p * Decimal::from(i.on_hand));
+                let retail = price.map(|p| p * i.on_hand.dec());
                 at_cost += value;
                 match retail {
                     Some(r) => at_retail += r,
@@ -182,7 +183,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
         }
         "movement" => {
             let mut st = conn.prepare(
-                "SELECT m.kind, count(*), sum(m.qty), sum(abs(m.qty) * CAST(coalesce(m.unit_cost, '0') AS REAL)) FROM inventory_movements m
+                "SELECT m.kind, count(*), sum(m.qty), sum(abs(m.qty) * CAST(coalesce(m.unit_cost, '0') AS REAL)) / 1000.0 FROM inventory_movements m
                  WHERE m.created_at BETWEEN ?1 AND ?2 GROUP BY m.kind ORDER BY m.kind",
             )?;
             let rows: Vec<Vec<String>> = st
@@ -190,7 +191,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
                     Ok(vec![
                         crate_label(&r.get::<_, String>(0)?),
                         r.get::<_, i64>(1)?.to_string(),
-                        r.get::<_, i64>(2)?.to_string(),
+                        r.get::<_, Qty>(2)?.to_string(),
                         format!("{:.2}", r.get::<_, f64>(3)?),
                     ])
                 })?
@@ -211,7 +212,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
             )?;
             let rows = st
                 .query_map(params![from, to], |r| {
-                    Ok(vec![r.get(0)?, r.get(1)?, r.get::<_, i64>(2)?.to_string(), r.get::<_, i64>(3)?.to_string()])
+                    Ok(vec![r.get(0)?, r.get(1)?, r.get::<_, Qty>(2)?.to_string(), r.get::<_, i64>(3)?.to_string()])
                 })?
                 .collect::<Result<_, _>>()?;
             report(
@@ -232,14 +233,14 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
             )?;
             let rows: Vec<Vec<String>> = st
                 .query_map(params![from, to], |r| {
-                    let on: i64 = r.get(2)?;
+                    let on: Qty = r.get(2)?;
                     let cost: String = r.get(4)?;
                     Ok(vec![
                         r.get(0)?,
                         r.get(1)?,
                         on.to_string(),
                         r.get::<_, Option<String>>(3)?.map(|d| d[..10].to_string()).unwrap_or_else(|| "never".into()),
-                        m(dec(&cost) * Decimal::from(on)),
+                        m(dec(&cost) * on.dec()),
                     ])
                 })?
                 .collect::<Result<_, _>>()?;
@@ -255,7 +256,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
         }
         "turnover" => {
             let cogs: f64 = conn.query_row(
-                "SELECT coalesce(sum(-qty * CAST(coalesce(unit_cost, '0') AS REAL)), 0) FROM inventory_movements WHERE kind IN ('issue', 'consume') AND created_at BETWEEN ?1 AND ?2",
+                "SELECT coalesce(sum(-qty * CAST(coalesce(unit_cost, '0') AS REAL)), 0) / 1000.0 FROM inventory_movements WHERE kind IN ('issue', 'consume') AND created_at BETWEEN ?1 AND ?2",
                 params![from, to],
                 |r| r.get(0),
             )?;
@@ -280,7 +281,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
         "by_supplier" => {
             let mut st = conn.prepare(
                 "SELECT coalesce(s.name, '(no supplier)'), count(i.id), coalesce(sum((SELECT sum(on_hand) FROM stock_levels x WHERE x.item_id = i.id)), 0),
-                        coalesce(sum((SELECT sum(on_hand) FROM stock_levels x WHERE x.item_id = i.id) * CAST(i.avg_cost AS REAL)), 0)
+                        coalesce(sum((SELECT sum(on_hand) FROM stock_levels x WHERE x.item_id = i.id) * CAST(i.avg_cost AS REAL)), 0) / 1000.0
                  FROM inventory_items i LEFT JOIN suppliers s ON s.id = i.supplier_id WHERE i.archived = 0 GROUP BY s.id ORDER BY 1",
             )?;
             let rows = st
@@ -288,7 +289,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
                     Ok(vec![
                         r.get(0)?,
                         r.get::<_, i64>(1)?.to_string(),
-                        r.get::<_, i64>(2)?.to_string(),
+                        r.get::<_, Qty>(2)?.to_string(),
                         format!("{:.2}", r.get::<_, f64>(3)?),
                     ])
                 })?
@@ -374,7 +375,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
         }
         "supplier_spend" => {
             let mut st = conn.prepare(
-                "SELECT coalesce(s.name, '(no supplier recorded)'), count(*), sum(m.qty), sum(m.qty * CAST(coalesce(m.unit_cost, '0') AS REAL))
+                "SELECT coalesce(s.name, '(no supplier recorded)'), count(*), sum(m.qty), sum(m.qty * CAST(coalesce(m.unit_cost, '0') AS REAL)) / 1000.0
                  FROM inventory_movements m JOIN inventory_items i ON i.id = m.item_id
                  LEFT JOIN purchase_orders o ON m.ref_kind = 'po' AND o.id = m.ref_id
                  LEFT JOIN suppliers s ON s.id = coalesce(o.supplier_id, i.supplier_id)
@@ -386,7 +387,7 @@ pub fn run(conn: &Connection, q: &ReportQuery) -> AppResult<Report> {
                     Ok(vec![
                         r.get(0)?,
                         r.get::<_, i64>(1)?.to_string(),
-                        r.get::<_, i64>(2)?.to_string(),
+                        r.get::<_, Qty>(2)?.to_string(),
                         format!("{:.2}", r.get::<_, f64>(3)?),
                     ])
                 })?

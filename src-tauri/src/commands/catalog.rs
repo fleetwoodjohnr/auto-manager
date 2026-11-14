@@ -91,7 +91,13 @@ pub fn plist_create(core: State<'_, Core>, name: String, vehicle_id: Option<Stri
 }
 
 #[tauri::command(async)]
-pub fn plist_add(core: State<'_, Core>, list_id: String, part_id: String, qty: i64, note: Option<String>) -> AppResult<lists::PartList> {
+pub fn plist_add(
+    core: State<'_, Core>,
+    list_id: String,
+    part_id: String,
+    qty: auto_manager_core::Qty,
+    note: Option<String>,
+) -> AppResult<lists::PartList> {
     check_id(&list_id)?;
     check_id(&part_id)?;
     core.tx(|c| lists::add(c, &list_id, &part_id, qty, note.as_deref().unwrap_or("")))

@@ -8,6 +8,7 @@
 use crate::db::{self, clean, dec};
 use crate::error::{AppError, AppResult};
 use crate::money;
+use crate::qty::{self, Qty};
 use rusqlite::{Connection, OptionalExtension, params};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,8 @@ pub struct Item {
     pub barcode: Option<String>,
     pub condition: String,
     pub unit: String,
+    /// Sold in parts of a unit (oil by the litre); otherwise whole units only.
+    pub fractional: bool,
     #[ts(type = "string")]
     pub cost: Decimal,
     #[ts(type = "string")]
@@ -36,8 +39,8 @@ pub struct Item {
     #[ts(type = "string | null")]
     pub price_override: Option<Decimal>,
     pub pricing_profile_id: Option<String>,
-    pub min_stock: i64,
-    pub reorder_qty: i64,
+    pub min_stock: Qty,
+    pub reorder_qty: Qty,
     pub supplier_id: Option<String>,
     pub supplier_name: Option<String>,
     pub warranty: String,
@@ -45,10 +48,10 @@ pub struct Item {
     pub archived: bool,
     pub version: i64,
     /// Sellable locations only (the damaged/quarantine location is counted separately).
-    pub on_hand: i64,
-    pub reserved: i64,
-    pub available: i64,
-    pub damaged: i64,
+    pub on_hand: Qty,
+    pub reserved: Qty,
+    pub available: Qty,
+    pub damaged: Qty,
     /// "Main: A-3" style summary of where it is.
     pub bins: String,
     pub created_at: String,
@@ -70,7 +73,7 @@ impl Item {
 const ITEM_SELECT: &str = "SELECT i.id, i.part_id, i.sku, p.name, p.brand, p.category_id, coalesce(c.name, '') AS category,
   coalesce((SELECT group_concat(value, ' · ') FROM part_identifiers WHERE part_id = p.id AND kind <> 'barcode'), '') AS numbers,
   (SELECT value FROM part_identifiers WHERE part_id = p.id AND kind = 'barcode' LIMIT 1) AS barcode,
-  i.condition, i.unit, i.cost, i.avg_cost, i.price_override, i.pricing_profile_id, i.min_stock, i.reorder_qty, i.supplier_id, s.name AS supplier_name,
+  i.condition, i.unit, i.fractional, i.cost, i.avg_cost, i.price_override, i.pricing_profile_id, i.min_stock, i.reorder_qty, i.supplier_id, s.name AS supplier_name,
   i.warranty, i.notes, i.archived, i.version,
   coalesce((SELECT sum(on_hand) FROM stock_levels sl JOIN inventory_locations l ON l.id = sl.location_id WHERE sl.item_id = i.id AND l.kind = 'warehouse'), 0) AS on_hand,
   coalesce((SELECT sum(reserved) FROM stock_levels sl JOIN inventory_locations l ON l.id = sl.location_id WHERE sl.item_id = i.id AND l.kind = 'warehouse'), 0) AS reserved,
@@ -81,8 +84,8 @@ const ITEM_SELECT: &str = "SELECT i.id, i.part_id, i.sku, p.name, p.brand, p.cat
 FROM inventory_items i JOIN parts p ON p.id = i.part_id LEFT JOIN part_categories c ON c.id = p.category_id LEFT JOIN suppliers s ON s.id = i.supplier_id";
 
 fn item_row(r: &rusqlite::Row) -> rusqlite::Result<Item> {
-    let on_hand: i64 = r.get("on_hand")?;
-    let reserved: i64 = r.get("reserved")?;
+    let on_hand: Qty = r.get("on_hand")?;
+    let reserved: Qty = r.get("reserved")?;
     Ok(Item {
         id: r.get("id")?,
         part_id: r.get("part_id")?,
@@ -95,6 +98,7 @@ fn item_row(r: &rusqlite::Row) -> rusqlite::Result<Item> {
         barcode: r.get("barcode")?,
         condition: r.get("condition")?,
         unit: r.get("unit")?,
+        fractional: r.get::<_, i64>("fractional")? == 1,
         cost: dec(r, "cost")?,
         avg_cost: dec(r, "avg_cost")?,
         price_override: db::opt_dec(r, "price_override")?,
@@ -177,9 +181,9 @@ pub struct StockLevel {
     pub location: String,
     pub kind: String,
     pub bin: String,
-    pub on_hand: i64,
-    pub reserved: i64,
-    pub available: i64,
+    pub on_hand: Qty,
+    pub reserved: Qty,
+    pub available: Qty,
 }
 
 pub fn levels(conn: &Connection, item_id: &str) -> AppResult<Vec<StockLevel>> {
@@ -188,8 +192,8 @@ pub fn levels(conn: &Connection, item_id: &str) -> AppResult<Vec<StockLevel>> {
          WHERE s.item_id = ?1 ORDER BY l.is_default DESC, l.name",
     )?;
     let rows = st.query_map([item_id], |r| {
-        let on_hand: i64 = r.get(4)?;
-        let reserved: i64 = r.get(5)?;
+        let on_hand: Qty = r.get(4)?;
+        let reserved: Qty = r.get(5)?;
         Ok(StockLevel {
             location_id: r.get(0)?,
             location: r.get(1)?,
@@ -204,7 +208,7 @@ pub fn levels(conn: &Connection, item_id: &str) -> AppResult<Vec<StockLevel>> {
 }
 
 /// On-hand quantity of every item at one location (for counting sheets).
-pub fn on_hand_at(conn: &Connection, location_id: &str) -> AppResult<Vec<(String, i64)>> {
+pub fn on_hand_at(conn: &Connection, location_id: &str) -> AppResult<Vec<(String, Qty)>> {
     let mut st = conn.prepare("SELECT item_id, on_hand FROM stock_levels WHERE location_id = ?1")?;
     let rows = st.query_map([location_id], |r| Ok((r.get(0)?, r.get(1)?)))?;
     Ok(rows.collect::<Result<_, _>>()?)
@@ -223,9 +227,11 @@ pub struct ItemInput {
     pub price_override: Option<String>,
     pub pricing_profile_id: Option<String>,
     #[serde(default)]
-    pub min_stock: i64,
+    pub fractional: bool,
     #[serde(default)]
-    pub reorder_qty: i64,
+    pub min_stock: Qty,
+    #[serde(default)]
+    pub reorder_qty: Qty,
     pub supplier_id: Option<String>,
     #[serde(default)]
     pub warranty: String,
@@ -273,6 +279,9 @@ fn validate(conn: &Connection, i: &ItemInput, self_id: Option<&str>) -> AppResul
     if i.min_stock < 0 || i.reorder_qty < 0 {
         return Err(AppError::invalid("min_stock", "Stock levels can't be negative."));
     }
+    if !i.fractional && !(i.min_stock.is_whole() && i.reorder_qty.is_whole()) {
+        return Err(AppError::invalid("min_stock", "Use whole numbers, or allow parts of a unit for this item."));
+    }
     if let Some(pp) = &i.pricing_profile_id
         && !db::exists(conn, "SELECT 1 FROM pricing_profiles WHERE id = ?1", [pp])?
     {
@@ -288,8 +297,8 @@ pub fn create(conn: &Connection, part_id: &str, i: &ItemInput) -> AppResult<Item
     let c = validate(conn, i, None)?;
     let id = db::new_id();
     conn.execute(
-        "INSERT INTO inventory_items (id, part_id, sku, condition, unit, cost, avg_cost, price_override, pricing_profile_id, min_stock, reorder_qty, supplier_id, warranty, notes)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+        "INSERT INTO inventory_items (id, part_id, sku, condition, unit, cost, avg_cost, price_override, pricing_profile_id, min_stock, reorder_qty, supplier_id, warranty, notes, fractional)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
         params![
             id,
             part_id,
@@ -303,7 +312,8 @@ pub fn create(conn: &Connection, part_id: &str, i: &ItemInput) -> AppResult<Item
             i.reorder_qty,
             i.supplier_id,
             i.warranty.trim(),
-            i.notes.trim()
+            i.notes.trim(),
+            i.fractional
         ],
     )?;
     db::audit(conn, "item", Some(&id), "create", &format!("Added inventory item {}", c.sku), None)?;
@@ -315,7 +325,7 @@ pub fn update(conn: &Connection, id: &str, version: i64, i: &ItemInput) -> AppRe
     let c = validate(conn, i, Some(id))?;
     let n = conn.execute(
         "UPDATE inventory_items SET sku = ?3, condition = ?4, unit = ?5, cost = ?6, price_override = ?7, pricing_profile_id = ?8, min_stock = ?9,
-           reorder_qty = ?10, supplier_id = ?11, warranty = ?12, notes = ?13, version = version + 1, updated_at = ?14
+           reorder_qty = ?10, supplier_id = ?11, warranty = ?12, notes = ?13, version = version + 1, updated_at = ?14, fractional = ?15
          WHERE id = ?1 AND version = ?2",
         params![
             id,
@@ -331,7 +341,8 @@ pub fn update(conn: &Connection, id: &str, version: i64, i: &ItemInput) -> AppRe
             i.supplier_id,
             i.warranty.trim(),
             i.notes.trim(),
-            db::now_utc()
+            db::now_utc(),
+            i.fractional
         ],
     )?;
     if n == 0 {
@@ -443,13 +454,13 @@ fn location_kind(conn: &Connection, id: &str) -> AppResult<String> {
         .ok_or_else(|| AppError::invalid("location_id", "Choose a location from the list."))
 }
 
-fn level(conn: &Connection, item: &str, loc: &str) -> AppResult<(i64, i64)> {
+fn level(conn: &Connection, item: &str, loc: &str) -> AppResult<(Qty, Qty)> {
     Ok(conn
         .query_row("SELECT on_hand, reserved FROM stock_levels WHERE item_id = ?1 AND location_id = ?2", params![item, loc], |r| {
             Ok((r.get(0)?, r.get(1)?))
         })
         .optional()?
-        .unwrap_or((0, 0)))
+        .unwrap_or((Qty::ZERO, Qty::ZERO)))
 }
 
 fn ensure_level(conn: &Connection, item: &str, loc: &str) -> AppResult<()> {
@@ -457,7 +468,7 @@ fn ensure_level(conn: &Connection, item: &str, loc: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn bump(conn: &Connection, item: &str, loc: &str, on_hand: i64, reserved: i64) -> AppResult<()> {
+fn bump(conn: &Connection, item: &str, loc: &str, on_hand: Qty, reserved: Qty) -> AppResult<()> {
     ensure_level(conn, item, loc)?;
     conn.execute(
         "UPDATE stock_levels SET on_hand = on_hand + ?3, reserved = reserved + ?4 WHERE item_id = ?1 AND location_id = ?2",
@@ -474,7 +485,7 @@ fn record(
     item: &str,
     loc: &str,
     kind: &str,
-    qty: i64,
+    qty: Qty,
     unit_cost: Option<Decimal>,
     group: Option<&str>,
     reference: (&str, &str),
@@ -490,20 +501,44 @@ fn record(
     Ok(id)
 }
 
-fn positive(qty: i64) -> AppResult<i64> {
+fn positive(qty: Qty) -> AppResult<Qty> {
     if qty <= 0 {
-        return Err(AppError::invalid("qty", "Enter a quantity of at least 1."));
+        return Err(AppError::invalid("qty", "Enter a quantity greater than 0."));
     }
-    if qty > 1_000_000 {
+    if qty > qty::MAX_UNITS {
         return Err(AppError::invalid("qty", "That quantity is too large."));
     }
     Ok(qty)
 }
 
-fn need_available(conn: &Connection, item: &str, loc: &str, qty: i64) -> AppResult<()> {
+/// Items not sold in parts of a unit take whole quantities only.
+pub fn check_whole(conn: &Connection, item: &str, qty: Qty) -> AppResult<()> {
+    if !qty.is_whole() {
+        let (fractional, unit): (i64, String) = conn
+            .query_row("SELECT fractional, unit FROM inventory_items WHERE id = ?1", [item], |r| Ok((r.get(0)?, r.get(1)?)))
+            .optional()?
+            .ok_or_else(|| AppError::not_found("That inventory item"))?;
+        if fractional == 0 {
+            return Err(AppError::invalid(
+                "qty",
+                format!("This item is counted in whole units ({unit}). Allow parts of a unit on the item to use {qty}."),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// A positive quantity this item can take.
+fn amount(conn: &Connection, item: &str, qty: Qty) -> AppResult<Qty> {
+    let qty = positive(qty)?;
+    check_whole(conn, item, qty)?;
+    Ok(qty)
+}
+
+fn need_available(conn: &Connection, item: &str, loc: &str, qty: Qty) -> AppResult<()> {
     let (on_hand, reserved) = level(conn, item, loc)?;
     if on_hand - reserved < qty {
-        let mut msg = format!("Only {} available at this location", (on_hand - reserved).max(0));
+        let mut msg = format!("Only {} available at this location", (on_hand - reserved).max(Qty::ZERO));
         if reserved > 0 {
             msg.push_str(&format!(" ({reserved} reserved for jobs)"));
         }
@@ -518,7 +553,7 @@ fn need_available(conn: &Connection, item: &str, loc: &str, qty: i64) -> AppResu
 pub struct Receive {
     pub item_id: String,
     pub location_id: String,
-    pub qty: i64,
+    pub qty: Qty,
     /// Cost per unit for this delivery; the item's cost is used when empty.
     pub unit_cost: Option<String>,
     pub bin: Option<String>,
@@ -530,7 +565,7 @@ pub struct Receive {
 
 /// Receive stock. Updates last cost and the moving weighted-average cost.
 pub fn receive(conn: &Connection, r: &Receive) -> AppResult<String> {
-    let qty = positive(r.qty)?;
+    let qty = amount(conn, &r.item_id, r.qty)?;
     if location_kind(conn, &r.location_id)? == "damaged" {
         return Err(AppError::invalid("location_id", "Receive into a stock location, not the damaged-stock location."));
     }
@@ -543,13 +578,13 @@ pub fn receive(conn: &Connection, r: &Receive) -> AppResult<String> {
     let avg = if total_before <= 0 {
         unit_cost
     } else {
-        ((item.avg_cost * Decimal::from(total_before) + unit_cost * Decimal::from(qty)) / Decimal::from(total_before + qty)).round_dp(6)
+        ((item.avg_cost * total_before.dec() + unit_cost * qty.dec()) / (total_before + qty).dec()).round_dp(6)
     };
     conn.execute(
         "UPDATE inventory_items SET cost = ?2, avg_cost = ?3 WHERE id = ?1",
         params![r.item_id, unit_cost.to_string(), avg.normalize().to_string()],
     )?;
-    bump(conn, &r.item_id, &r.location_id, qty, 0)?;
+    bump(conn, &r.item_id, &r.location_id, qty, Qty::ZERO)?;
     if let Some(bin) = r.bin.as_deref().map(clean).filter(|b| !b.is_empty()) {
         conn.execute("UPDATE stock_levels SET bin = ?3 WHERE item_id = ?1 AND location_id = ?2", params![r.item_id, r.location_id, bin])?;
     }
@@ -572,7 +607,7 @@ pub fn receive(conn: &Connection, r: &Receive) -> AppResult<String> {
 pub struct Change {
     pub item_id: String,
     pub location_id: String,
-    pub qty: i64,
+    pub qty: Qty,
     #[serde(default)]
     pub reason: String,
     pub ref_kind: Option<String>,
@@ -585,30 +620,30 @@ fn reference(c: &Change) -> (&str, &str) {
 
 /// Take stock out (sold over the counter, used, scrapped). Reserved stock can't be issued.
 pub fn issue(conn: &Connection, c: &Change) -> AppResult<String> {
-    let qty = positive(c.qty)?;
+    let qty = amount(conn, &c.item_id, c.qty)?;
     location_kind(conn, &c.location_id)?;
     need_available(conn, &c.item_id, &c.location_id, qty)?;
-    bump(conn, &c.item_id, &c.location_id, -qty, 0)?;
+    bump(conn, &c.item_id, &c.location_id, -qty, Qty::ZERO)?;
     let cost = get(conn, &c.item_id)?.avg_cost;
     record(conn, &c.item_id, &c.location_id, "issue", -qty, Some(cost), None, reference(c), &c.reason, None)
 }
 
 /// A customer brings a part back (qty > 0 into stock).
 pub fn return_in(conn: &Connection, c: &Change) -> AppResult<String> {
-    let qty = positive(c.qty)?;
+    let qty = amount(conn, &c.item_id, c.qty)?;
     if location_kind(conn, &c.location_id)? == "damaged" {
         return Err(AppError::invalid("location_id", "Return into a stock location; use “Damaged” for faulty returns."));
     }
-    bump(conn, &c.item_id, &c.location_id, qty, 0)?;
+    bump(conn, &c.item_id, &c.location_id, qty, Qty::ZERO)?;
     record(conn, &c.item_id, &c.location_id, "return_in", qty, None, None, reference(c), &c.reason, None)
 }
 
 /// Send stock back to the supplier.
 pub fn return_out(conn: &Connection, c: &Change) -> AppResult<String> {
-    let qty = positive(c.qty)?;
+    let qty = amount(conn, &c.item_id, c.qty)?;
     location_kind(conn, &c.location_id)?;
     need_available(conn, &c.item_id, &c.location_id, qty)?;
-    bump(conn, &c.item_id, &c.location_id, -qty, 0)?;
+    bump(conn, &c.item_id, &c.location_id, -qty, Qty::ZERO)?;
     record(conn, &c.item_id, &c.location_id, "return_out", -qty, None, None, reference(c), &c.reason, None)
 }
 
@@ -617,7 +652,7 @@ pub fn adjust_to(
     conn: &Connection,
     item: &str,
     loc: &str,
-    counted: i64,
+    counted: Qty,
     kind: &str,
     reason: &str,
     ref_id: Option<&str>,
@@ -625,6 +660,7 @@ pub fn adjust_to(
     if counted < 0 {
         return Err(AppError::invalid("qty", "A count can't be negative."));
     }
+    check_whole(conn, item, counted)?;
     location_kind(conn, loc)?;
     let (on_hand, reserved) = level(conn, item, loc)?;
     if counted < reserved {
@@ -636,7 +672,7 @@ pub fn adjust_to(
     if delta == 0 {
         return Ok(None);
     }
-    bump(conn, item, loc, delta, 0)?;
+    bump(conn, item, loc, delta, Qty::ZERO)?;
     let cost = get(conn, item)?.avg_cost;
     Ok(Some(record(
         conn,
@@ -658,7 +694,7 @@ pub struct Adjust {
     pub item_id: String,
     pub location_id: String,
     /// The new quantity on hand at this location.
-    pub counted: i64,
+    pub counted: Qty,
     pub reason: String,
 }
 
@@ -673,7 +709,7 @@ pub fn adjust(conn: &Connection, a: &Adjust) -> AppResult<Option<String>> {
 #[ts(export)]
 pub struct CountLine {
     pub item_id: String,
-    pub counted: i64,
+    pub counted: Qty,
 }
 
 #[derive(Serialize, TS, Clone, Debug)]
@@ -704,14 +740,14 @@ pub struct Transfer {
     pub item_id: String,
     pub from_location_id: String,
     pub to_location_id: String,
-    pub qty: i64,
+    pub qty: Qty,
     pub bin: Option<String>,
     #[serde(default)]
     pub reason: String,
 }
 
 fn transfer_kind(conn: &Connection, t: &Transfer, kind_out: &str, kind_in: &str) -> AppResult<String> {
-    let qty = positive(t.qty)?;
+    let qty = amount(conn, &t.item_id, t.qty)?;
     if t.from_location_id == t.to_location_id {
         return Err(AppError::invalid("to_location_id", "Choose a different location to move to."));
     }
@@ -719,8 +755,8 @@ fn transfer_kind(conn: &Connection, t: &Transfer, kind_out: &str, kind_in: &str)
     location_kind(conn, &t.to_location_id)?;
     need_available(conn, &t.item_id, &t.from_location_id, qty)?;
     let group = db::new_id();
-    bump(conn, &t.item_id, &t.from_location_id, -qty, 0)?;
-    bump(conn, &t.item_id, &t.to_location_id, qty, 0)?;
+    bump(conn, &t.item_id, &t.from_location_id, -qty, Qty::ZERO)?;
+    bump(conn, &t.item_id, &t.to_location_id, qty, Qty::ZERO)?;
     if let Some(bin) = t.bin.as_deref().map(clean).filter(|b| !b.is_empty()) {
         conn.execute(
             "UPDATE stock_levels SET bin = ?3 WHERE item_id = ?1 AND location_id = ?2",
@@ -767,7 +803,7 @@ pub struct Reservation {
     pub name: String,
     pub location_id: String,
     pub location: String,
-    pub qty: i64,
+    pub qty: Qty,
     pub status: String,
     pub job_id: Option<String>,
     pub job_number: Option<i64>,
@@ -822,7 +858,7 @@ pub struct Reserve {
     pub item_id: String,
     /// Defaults to the location with the most available stock.
     pub location_id: Option<String>,
-    pub qty: i64,
+    pub qty: Qty,
     pub job_id: Option<String>,
     pub line_id: Option<String>,
     pub vehicle_id: Option<String>,
@@ -831,7 +867,7 @@ pub struct Reserve {
 }
 
 pub fn reserve(conn: &Connection, r: &Reserve) -> AppResult<Reservation> {
-    let qty = positive(r.qty)?;
+    let qty = amount(conn, &r.item_id, r.qty)?;
     let loc = match &r.location_id {
         Some(l) => l.clone(),
         None => conn
@@ -848,7 +884,7 @@ pub fn reserve(conn: &Connection, r: &Reserve) -> AppResult<Reservation> {
         return Err(AppError::invalid("location_id", "Damaged stock can't be reserved."));
     }
     need_available(conn, &r.item_id, &loc, qty)?;
-    bump(conn, &r.item_id, &loc, 0, qty)?;
+    bump(conn, &r.item_id, &loc, Qty::ZERO, qty)?;
     let id = db::new_id();
     conn.execute(
         "INSERT INTO stock_reservations (id, item_id, location_id, qty, job_id, line_id, vehicle_id, note) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -864,7 +900,7 @@ pub fn release(conn: &Connection, id: &str) -> AppResult<Reservation> {
     if r.status != "active" {
         return Ok(r);
     }
-    bump(conn, &r.item_id, &r.location_id, 0, -r.qty)?;
+    bump(conn, &r.item_id, &r.location_id, Qty::ZERO, -r.qty)?;
     conn.execute("UPDATE stock_reservations SET status = 'released', closed_at = ?2 WHERE id = ?1", params![id, db::now_utc()])?;
     db::audit(conn, "reservation", Some(id), "release", &format!("Released {}", r.qty), None)?;
     reservation(conn, id)
@@ -906,7 +942,7 @@ pub struct Movement {
     pub name: String,
     pub location: String,
     pub kind: String,
-    pub qty: i64,
+    pub qty: Qty,
     #[ts(type = "string | null")]
     pub unit_cost: Option<Decimal>,
     pub group_id: Option<String>,
@@ -969,12 +1005,12 @@ pub fn reverse(conn: &Connection, movement_id: &str) -> AppResult<Vec<String>> {
         if db::exists(conn, "SELECT 1 FROM inventory_movements WHERE reverses_id = ?1", [&id])? {
             return Err(AppError::Conflict("That change was already undone.".into()));
         }
-        let (item, loc, qty): (String, String, i64) =
+        let (item, loc, qty): (String, String, Qty) =
             conn.query_row("SELECT item_id, location_id, qty FROM inventory_movements WHERE id = ?1", [&id], |r| {
                 Ok((r.get(0)?, r.get(1)?, r.get(2)?))
             })?;
         // Taking back stock that has since been reserved or used would go negative: the CHECKs refuse it.
-        bump(conn, &item, &loc, -qty, 0)?;
+        bump(conn, &item, &loc, -qty, Qty::ZERO)?;
         out.push(record(conn, &item, &loc, "reverse", -qty, None, None, ("", ""), "Undo", Some(&id))?);
     }
     db::audit(conn, "movement", Some(movement_id), "reverse", "Undid a stock change", None)?;
@@ -987,7 +1023,7 @@ pub struct Valuation {
     pub method: String,
     #[ts(type = "string")]
     pub at_cost: Decimal,
-    pub units: i64,
+    pub units: Qty,
     pub items: i64,
 }
 
@@ -1000,14 +1036,14 @@ pub fn valuation(conn: &Connection, method: &str) -> AppResult<Valuation> {
          WHERE i.archived = 0 GROUP BY i.id"
     ))?;
     let mut at_cost = Decimal::ZERO;
-    let mut units = 0;
+    let mut units = Qty::ZERO;
     let mut items = 0;
-    let rows = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
+    let rows = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Qty>(1)?)))?;
     for row in rows {
         let (c, q) = row?;
         items += 1;
         units += q;
-        at_cost += c.parse::<Decimal>().unwrap_or_default() * Decimal::from(q);
+        at_cost += c.parse::<Decimal>().unwrap_or_default() * q.dec();
     }
     Ok(Valuation {
         method: if method == "standard" { "standard".into() } else { "average".into() },
@@ -1021,6 +1057,7 @@ pub fn valuation(conn: &Connection, method: &str) -> AppResult<Valuation> {
 mod tests {
     use super::*;
     use crate::parts;
+    use crate::qty::Qty;
     use rust_decimal_macros::dec;
 
     fn setup() -> (Connection, String) {
@@ -1041,8 +1078,9 @@ mod tests {
                 cost: "4.00".into(),
                 price_override: None,
                 pricing_profile_id: None,
-                min_stock: 2,
-                reorder_qty: 10,
+                fractional: false,
+                min_stock: Qty::units(2),
+                reorder_qty: Qty::units(10),
                 supplier_id: None,
                 warranty: String::new(),
                 notes: String::new(),
@@ -1052,13 +1090,13 @@ mod tests {
         (conn, i.id)
     }
 
-    fn rcv(conn: &Connection, item: &str, qty: i64, cost: &str) -> String {
+    fn rcv(conn: &Connection, item: &str, qty: impl Into<Qty>, cost: &str) -> String {
         receive(
             conn,
             &Receive {
                 item_id: item.into(),
                 location_id: "loc-main".into(),
-                qty,
+                qty: qty.into(),
                 unit_cost: Some(cost.into()),
                 bin: Some("A-3".into()),
                 reason: String::new(),
@@ -1068,8 +1106,71 @@ mod tests {
         )
         .unwrap()
     }
-    fn chg(item: &str, qty: i64) -> Change {
-        Change { item_id: item.into(), location_id: "loc-main".into(), qty, reason: "test".into(), ref_kind: None, ref_id: None }
+    fn chg(item: &str, qty: impl Into<Qty>) -> Change {
+        Change {
+            item_id: item.into(),
+            location_id: "loc-main".into(),
+            qty: qty.into(),
+            reason: "test".into(),
+            ref_kind: None,
+            ref_id: None,
+        }
+    }
+
+    #[test]
+    fn parts_of_a_unit_only_where_allowed() {
+        let (conn, id) = setup();
+        let q = |s: &str| Qty::parse("qty", s).unwrap();
+        let whole = Receive {
+            item_id: id.clone(),
+            location_id: "loc-main".into(),
+            qty: q("1.5"),
+            unit_cost: None,
+            bin: None,
+            reason: String::new(),
+            ref_kind: None,
+            ref_id: None,
+        };
+        assert!(receive(&conn, &whole).unwrap_err().to_string().contains("whole units"), "whole-unit items refuse 1.5");
+        let mut item = get(&conn, &id).unwrap();
+        let input = ItemInput {
+            sku: item.sku.clone(),
+            condition: item.condition.clone(),
+            unit: "L".into(),
+            cost: item.cost.to_string(),
+            price_override: None,
+            pricing_profile_id: None,
+            fractional: true,
+            min_stock: q("2.5"),
+            reorder_qty: q("10"),
+            supplier_id: None,
+            warranty: String::new(),
+            notes: String::new(),
+        };
+        item = update(&conn, &id, item.version, &input).unwrap();
+        assert!(item.fractional);
+        rcv(&conn, &id, q("4.5"), "8.00");
+        rcv(&conn, &id, q("0.5"), "10.00");
+        issue(&conn, &chg(&id, q("0.25"))).unwrap();
+        reserve(
+            &conn,
+            &Reserve {
+                item_id: id.clone(),
+                location_id: None,
+                qty: q("1.75"),
+                job_id: None,
+                line_id: None,
+                vehicle_id: None,
+                note: String::new(),
+            },
+        )
+        .unwrap();
+        let i = get(&conn, &id).unwrap();
+        assert_eq!((i.on_hand.to_string(), i.reserved.to_string(), i.available.to_string()), ("4.75".into(), "1.75".into(), "3".into()));
+        assert_eq!(i.avg_cost.to_string(), "8.2", "(4.5 × 8 + 0.5 × 10) / 5");
+        assert_eq!(i.stock_state(), "ok");
+        assert!(issue(&conn, &chg(&id, q("3.001"))).is_err(), "can't take more than is available");
+        assert!(issue(&conn, &chg(&id, Qty::ZERO)).is_err(), "zero is refused");
     }
 
     #[test]
@@ -1078,7 +1179,7 @@ mod tests {
         rcv(&conn, &id, 10, "4.00");
         rcv(&conn, &id, 10, "5.00");
         let i = get(&conn, &id).unwrap();
-        assert_eq!((i.on_hand, i.available), (20, 20));
+        assert_eq!((i.on_hand, i.available), (Qty::units(20), Qty::units(20)));
         assert_eq!(i.avg_cost, dec!(4.5));
         assert_eq!(i.cost, dec!(5.00));
         assert_eq!(i.bins, "Main: A-3");
@@ -1104,11 +1205,19 @@ mod tests {
         rcv(&conn, &id, 4, "4");
         let r = reserve(
             &conn,
-            &Reserve { item_id: id.clone(), location_id: None, qty: 3, job_id: None, line_id: None, vehicle_id: None, note: String::new() },
+            &Reserve {
+                item_id: id.clone(),
+                location_id: None,
+                qty: Qty::units(3),
+                job_id: None,
+                line_id: None,
+                vehicle_id: None,
+                note: String::new(),
+            },
         )
         .unwrap();
         let i = get(&conn, &id).unwrap();
-        assert_eq!((i.on_hand, i.reserved, i.available), (4, 3, 1));
+        assert_eq!((i.on_hand, i.reserved, i.available), (Qty::units(4), Qty::units(3), Qty::units(1)));
         assert!(issue(&conn, &chg(&id, 2)).is_err(), "reserved stock can't be issued");
         assert!(
             reserve(
@@ -1116,7 +1225,7 @@ mod tests {
                 &Reserve {
                     item_id: id.clone(),
                     location_id: None,
-                    qty: 2,
+                    qty: Qty::units(2),
                     job_id: None,
                     line_id: None,
                     vehicle_id: None,
@@ -1129,7 +1238,7 @@ mod tests {
         let m2 = consume(&conn, &r.id).unwrap();
         assert_eq!(m1, m2, "consuming twice is the same movement");
         let i = get(&conn, &id).unwrap();
-        assert_eq!((i.on_hand, i.reserved, i.available), (1, 0, 1), "deducted exactly once");
+        assert_eq!((i.on_hand, i.reserved, i.available), (Qty::units(1), Qty::units(0), Qty::units(1)), "deducted exactly once");
         assert!(release(&conn, &r.id).unwrap().status == "consumed");
     }
 
@@ -1142,7 +1251,7 @@ mod tests {
             &Reserve {
                 item_id: id.clone(),
                 location_id: Some("loc-main".into()),
-                qty: 2,
+                qty: Qty::units(2),
                 job_id: None,
                 line_id: None,
                 vehicle_id: None,
@@ -1153,7 +1262,7 @@ mod tests {
         release(&conn, &r.id).unwrap();
         release(&conn, &r.id).unwrap();
         let i = get(&conn, &id).unwrap();
-        assert_eq!((i.reserved, i.available), (0, 4));
+        assert_eq!((i.reserved, i.available), (Qty::units(0), Qty::units(4)));
         assert!(consume(&conn, &r.id).is_err(), "a released reservation can't be consumed");
     }
 
@@ -1168,7 +1277,7 @@ mod tests {
                 item_id: id.clone(),
                 from_location_id: "loc-main".into(),
                 to_location_id: shelf.id.clone(),
-                qty: 3,
+                qty: Qty::units(3),
                 bin: None,
                 reason: String::new(),
             },
@@ -1176,8 +1285,8 @@ mod tests {
         .unwrap();
         mark_damaged(&conn, &chg(&id, 1)).unwrap();
         let i = get(&conn, &id).unwrap();
-        assert_eq!((i.on_hand, i.damaged), (9, 1), "damaged stock is not sellable");
-        post_count(&conn, "loc-main", &[CountLine { item_id: id.clone(), counted: 5 }]).unwrap();
+        assert_eq!((i.on_hand, i.damaged), (Qty::units(9), Qty::units(1)), "damaged stock is not sellable");
+        post_count(&conn, "loc-main", &[CountLine { item_id: id.clone(), counted: Qty::units(5) }]).unwrap();
         assert_eq!(level(&conn, &id, "loc-main").unwrap().0, 5);
         return_in(&conn, &chg(&id, 1)).unwrap();
         return_out(&conn, &chg(&id, 2)).unwrap();
@@ -1196,7 +1305,7 @@ mod tests {
                 item_id: id.clone(),
                 from_location_id: "loc-main".into(),
                 to_location_id: shelf.id.clone(),
-                qty: 2,
+                qty: Qty::units(2),
                 bin: None,
                 reason: String::new(),
             },
@@ -1210,7 +1319,15 @@ mod tests {
         // Undoing a receipt whose stock has been reserved would go negative: refused.
         reserve(
             &conn,
-            &Reserve { item_id: id.clone(), location_id: None, qty: 5, job_id: None, line_id: None, vehicle_id: None, note: String::new() },
+            &Reserve {
+                item_id: id.clone(),
+                location_id: None,
+                qty: Qty::units(5),
+                job_id: None,
+                line_id: None,
+                vehicle_id: None,
+                note: String::new(),
+            },
         )
         .unwrap();
         assert!(reverse(&conn, &m).is_err());
@@ -1229,8 +1346,9 @@ mod tests {
             cost: "1".into(),
             price_override: None,
             pricing_profile_id: None,
-            min_stock: 0,
-            reorder_qty: 0,
+            fractional: false,
+            min_stock: Qty::units(0),
+            reorder_qty: Qty::units(0),
             supplier_id: None,
             warranty: String::new(),
             notes: String::new(),
@@ -1262,8 +1380,9 @@ mod tests {
                     cost: "1".into(),
                     price_override: None,
                     pricing_profile_id: None,
-                    min_stock: 0,
-                    reorder_qty: 0,
+                    fractional: false,
+                    min_stock: Qty::units(0),
+                    reorder_qty: Qty::units(0),
                     supplier_id: None,
                     warranty: String::new(),
                     notes: String::new(),
@@ -1283,7 +1402,15 @@ mod tests {
                     let tx = c.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate).unwrap();
                     let ok = reserve(
                         &tx,
-                        &Reserve { item_id, location_id: None, qty: 2, job_id: None, line_id: None, vehicle_id: None, note: String::new() },
+                        &Reserve {
+                            item_id,
+                            location_id: None,
+                            qty: Qty::units(2),
+                            job_id: None,
+                            line_id: None,
+                            vehicle_id: None,
+                            note: String::new(),
+                        },
                     )
                     .is_ok();
                     if ok {
@@ -1297,7 +1424,7 @@ mod tests {
         assert_eq!(wins, 2, "5 units allow exactly two reservations of 2");
         let c = Connection::open(&path).unwrap();
         let i = get(&c, &item_id).unwrap();
-        assert_eq!((i.reserved, i.available), (4, 1));
+        assert_eq!((i.reserved, i.available), (Qty::units(4), Qty::units(1)));
     }
 
     #[test]

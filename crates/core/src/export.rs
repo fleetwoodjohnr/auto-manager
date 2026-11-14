@@ -19,11 +19,14 @@ pub fn all_json(conn: &Connection) -> AppResult<serde_json::Value> {
     for t in tables {
         let mut st = conn.prepare(&format!("SELECT * FROM \"{t}\""))?;
         let cols: Vec<String> = st.column_names().map(|c| c.to_string()).collect();
+        let is_qty: Vec<bool> = cols.iter().map(|c| crate::qty::COLUMNS.contains(&(t.as_str(), c.as_str()))).collect();
         let rows = st.query_map([], |r| {
             let mut o = serde_json::Map::new();
             for (i, c) in cols.iter().enumerate() {
                 let v = match r.get_ref(i)? {
                     ValueRef::Null => serde_json::Value::Null,
+                    // Quantities are stored in thousandths; export them in units.
+                    ValueRef::Integer(n) if is_qty[i] => serde_json::to_value(crate::qty::Qty::from_milli(n)).unwrap_or_default(),
                     ValueRef::Integer(n) => n.into(),
                     ValueRef::Real(f) => f.into(),
                     ValueRef::Text(s) => String::from_utf8_lossy(s).into(),
@@ -52,9 +55,16 @@ mod tests {
     fn exports_every_table() {
         let conn = crate::db::open_memory().unwrap();
         conn.execute("INSERT INTO vehicles (id, make, model) VALUES ('v1', 'Honda', 'Accord')", []).unwrap();
+        conn.execute_batch(
+            "INSERT INTO parts (id, name) VALUES ('p1', 'Oil');
+             INSERT INTO inventory_items (id, part_id, sku, fractional) VALUES ('i1', 'p1', 'OIL', 1);
+             INSERT INTO stock_levels (item_id, location_id, on_hand) VALUES ('i1', 'loc-main', 4500);",
+        )
+        .unwrap();
         let v = super::all_json(&conn).unwrap();
         assert_eq!(v["vehicles"][0]["model"], "Accord");
         assert!(v.get("inventory_movements").is_some());
+        assert_eq!(v["stock_levels"][0]["on_hand"], 4.5, "quantities in units, not thousandths");
         assert!(v.get("api_cache").is_none() && v.get("search_docs").is_none());
     }
 }

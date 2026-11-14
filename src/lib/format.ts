@@ -150,3 +150,9 @@ export function humanKey(k: string): string {
   const s = k.replace(/^vpic\./, "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_.]/g, " ").trim();
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
+
+/** A stock quantity (up to three decimals) with its unit, e.g. "4.5 L" or "3". */
+export function qty(n: number, unit?: string): string {
+  const v = Number(n.toFixed(3)).toLocaleString(undefined, { maximumFractionDigits: 3 });
+  return unit && unit !== "each" ? `${v} ${unit}` : v;
+}

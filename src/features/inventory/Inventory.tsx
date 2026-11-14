@@ -6,7 +6,7 @@ import { useAction, useCmd } from "../../api/queries";
 import type { Category, CountResult, Item, Location, Movement, Reservation, SearchResult } from "../../api/types";
 import { useApp, toast } from "../../store";
 import { Badge, DataTable, Empty, Loaded, PageHead, StockBadge, Tabs } from "../../ui";
-import { ago, dateTime, money } from "../../lib/format";
+import { ago, dateTime, money, qty } from "../../lib/format";
 import { NewItem } from "./ItemForm";
 import { ImportInventory } from "./ImportInventory";
 import { movementLabel } from "../dashboard/Dashboard";
@@ -139,7 +139,7 @@ function ItemList({ low, onLabels, onAdd }: { low: boolean; onLabels: (i: Item[]
                 { label: "Open catalog part", run: () => go({ page: "part", id: r.part_id }) },
                 { label: "Print label", run: () => onLabels([r]) },
               ]}
-              footer={`${rows.length} items · ${rows.reduce((n, r) => n + r.on_hand, 0)} units on hand`}
+              footer={`${rows.length} items · ${qty(rows.reduce((n, r) => n + r.on_hand, 0))} units on hand`}
               columns={[
                 { id: "sku", label: "SKU", width: "minmax(90px, 1fr)", render: (r) => <span className="mono">{r.sku}</span>, sort: (r) => r.sku },
                 { id: "name", label: "Product", width: "minmax(180px, 2.5fr)", render: (r) => (<>{r.name}{r.archived && <Badge>archived</Badge>}</>), sort: (r) => r.name },
@@ -317,7 +317,7 @@ function Count() {
                       <td className="small">{r.bins}</td>
                       <td className="num">{rec}</td>
                       <td>
-                        <input type="number" min={0} value={c ?? ""} onChange={(e) => setCounts({ ...counts, [r.id]: e.target.value })} style={{ width: 90 }} aria-label={`Counted ${r.sku}`} />
+                        <input type="number" min={0} step="any" value={c ?? ""} onChange={(e) => setCounts({ ...counts, [r.id]: e.target.value })} style={{ width: 90 }} aria-label={`Counted ${r.sku}`} />
                       </td>
                       <td className="num" style={{ color: diff ? (diff < 0 ? "var(--danger)" : "var(--success)") : undefined }}>
                         {diff == null ? "" : diff > 0 ? `+${diff}` : diff}

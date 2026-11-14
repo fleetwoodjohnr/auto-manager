@@ -82,7 +82,7 @@ export function Purchasing() {
                       <td>{x.supplier ?? <Badge tone="warn">choose a supplier on the item</Badge>}</td>
                       <td className="num">{money(x.unit_cost)}</td>
                       <td>
-                        <input type="number" min={1} value={qty[x.item_id] ?? x.suggested_qty} onChange={(e) => setQty({ ...qty, [x.item_id]: Number(e.target.value) })} style={{ width: 80 }} aria-label={`Quantity for ${x.sku}`} />
+                        <input type="number" min={0} step="any" value={qty[x.item_id] ?? x.suggested_qty} onChange={(e) => setQty({ ...qty, [x.item_id]: Number(e.target.value) })} style={{ width: 80 }} aria-label={`Quantity for ${x.sku}`} />
                       </td>
                     </tr>
                   ))}
@@ -262,13 +262,13 @@ function PoDialog({ id, onClose }: { id: string; onClose: () => void }) {
               </td>
               <td className="mono small">{l.supplier_sku}</td>
               <td className="num">
-                {draft ? <input type="number" min={1} defaultValue={l.qty_ordered} style={{ width: 70 }} onBlur={(e) => Number(e.target.value) !== l.qty_ordered && updLine.mutate({ lineId: l.id, qty: Number(e.target.value), unitCost: String(l.unit_cost) })} aria-label="Quantity" /> : l.qty_ordered}
+                {draft ? <input type="number" min={0} step="any" defaultValue={l.qty_ordered} style={{ width: 70 }} onBlur={(e) => Number(e.target.value) !== l.qty_ordered && updLine.mutate({ lineId: l.id, qty: Number(e.target.value), unitCost: String(l.unit_cost) })} aria-label="Quantity" /> : l.qty_ordered}
               </td>
               <td className="num">
                 {receiving && l.qty_received < l.qty_ordered ? (
                   <span className="row" style={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
                     {l.qty_received} +
-                    <input type="number" min={0} max={l.qty_ordered - l.qty_received} value={recv[l.id] ?? 0} onChange={(e) => setRecv({ ...recv, [l.id]: Number(e.target.value) })} style={{ width: 70 }} aria-label={`Receive ${l.sku}`} />
+                    <input type="number" min={0} step="any" max={l.qty_ordered - l.qty_received} value={recv[l.id] ?? 0} onChange={(e) => setRecv({ ...recv, [l.id]: Number(e.target.value) })} style={{ width: 70 }} aria-label={`Receive ${l.sku}`} />
                   </span>
                 ) : (
                   l.qty_received

@@ -172,6 +172,28 @@ mod tests {
     }
 
     #[test]
+    fn quantities_survive_the_move_to_thousandths() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.pragma_update(None, "foreign_keys", true).unwrap();
+        for (i, sql) in MIGRATIONS.iter().take(4).enumerate() {
+            conn.execute_batch(sql).unwrap();
+            conn.pragma_update(None, "user_version", i as i64 + 1).unwrap();
+        }
+        conn.execute_batch(
+            "INSERT INTO parts (id, name) VALUES ('p1', 'Oil filter');
+             INSERT INTO inventory_items (id, part_id, sku, min_stock, reorder_qty) VALUES ('i1', 'p1', 'OF-1', 2, 10);
+             INSERT INTO stock_levels (item_id, location_id, on_hand, reserved) VALUES ('i1', 'loc-main', 5, 3);
+             INSERT INTO inventory_movements (id, item_id, location_id, kind, qty, created_at) VALUES ('m1', 'i1', 'loc-main', 'receive', 5, '2026-01-01T00:00:00.000Z');",
+        )
+        .unwrap();
+        migrate(&mut conn, |_, _| Ok(())).unwrap();
+        let i = crate::inventory::get(&conn, "i1").unwrap();
+        assert_eq!((i.on_hand, i.reserved, i.available, i.min_stock, i.reorder_qty), (5.into(), 3.into(), 2.into(), 2.into(), 10.into()));
+        assert!(!i.fractional, "existing items stay whole-unit");
+        assert_eq!(crate::inventory::movements(&conn, Some("i1"), 10).unwrap()[0].qty, 5);
+    }
+
+    #[test]
     fn search_index_follows_entities() {
         let conn = open_memory().unwrap();
         conn.execute("INSERT INTO parts (id, name, brand) VALUES ('p1', 'Front brake pad set', 'Acme')", []).unwrap();

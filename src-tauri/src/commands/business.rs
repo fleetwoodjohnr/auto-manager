@@ -55,7 +55,7 @@ pub struct CreatedOrders {
 }
 
 #[tauri::command(async)]
-pub fn reorder_create(core: State<'_, Core>, picks: Vec<(String, i64)>) -> AppResult<CreatedOrders> {
+pub fn reorder_create(core: State<'_, Core>, picks: Vec<(String, auto_manager_core::Qty)>) -> AppResult<CreatedOrders> {
     core.tx(|c| purchasing::orders_from_suggestions(c, &picks)).map(|(orders, without_supplier)| CreatedOrders { orders, without_supplier })
 }
 
@@ -81,12 +81,18 @@ pub fn po_update(core: State<'_, Core>, id: String, input: PoUpdate) -> AppResul
 }
 
 #[tauri::command(async)]
-pub fn po_add_line(core: State<'_, Core>, id: String, item_id: String, qty: i64, unit_cost: Option<String>) -> AppResult<PurchaseOrder> {
+pub fn po_add_line(
+    core: State<'_, Core>,
+    id: String,
+    item_id: String,
+    qty: auto_manager_core::Qty,
+    unit_cost: Option<String>,
+) -> AppResult<PurchaseOrder> {
     core.tx(|c| purchasing::add_line(c, &id, &item_id, qty, unit_cost.as_deref()))
 }
 
 #[tauri::command(async)]
-pub fn po_update_line(core: State<'_, Core>, line_id: String, qty: i64, unit_cost: String) -> AppResult<PurchaseOrder> {
+pub fn po_update_line(core: State<'_, Core>, line_id: String, qty: auto_manager_core::Qty, unit_cost: String) -> AppResult<PurchaseOrder> {
     core.tx(|c| purchasing::update_line(c, &line_id, qty, &unit_cost))
 }
 

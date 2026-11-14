@@ -13,6 +13,7 @@ export function itemInput(i?: Item, minStock = 0): ItemInput {
     sku: i?.sku ?? "",
     condition: i?.condition ?? "new",
     unit: i?.unit ?? "each",
+    fractional: i?.fractional ?? false,
     cost: i ? String(i.cost) : "",
     price_override: i?.price_override ?? null,
     pricing_profile_id: i?.pricing_profile_id ?? null,
@@ -58,10 +59,10 @@ export function ItemFields({ value, onChange, error }: { value: ItemInput; onCha
         </select>
       </Field>
       <Field label="Minimum stock" hint="Low-stock alert at or below this." error={fe("min_stock")}>
-        <input type="number" min={0} value={value.min_stock} onChange={(e) => set("min_stock", Number(e.target.value))} />
+        <input type="number" min={0} step="any" value={value.min_stock} onChange={(e) => set("min_stock", Number(e.target.value))} />
       </Field>
       <Field label="Reorder quantity" error={fe("reorder_qty")}>
-        <input type="number" min={0} value={value.reorder_qty} onChange={(e) => set("reorder_qty", Number(e.target.value))} />
+        <input type="number" min={0} step="any" value={value.reorder_qty} onChange={(e) => set("reorder_qty", Number(e.target.value))} />
       </Field>
       <Field label="Supplier">
         <select value={value.supplier_id ?? ""} onChange={(e) => set("supplier_id", e.target.value || null)}>
@@ -73,9 +74,17 @@ export function ItemFields({ value, onChange, error }: { value: ItemInput; onCha
           ))}
         </select>
       </Field>
-      <Field label="Unit">
-        <input type="text" value={value.unit} onChange={(e) => set("unit", e.target.value)} placeholder="each, set, bottle" />
+      <Field label="Unit" hint="What one quantity means: each, set, L, qt, gal, ft, m, kg…">
+        <input type="text" list="am-units" value={value.unit} onChange={(e) => set("unit", e.target.value)} placeholder="each" />
+        <datalist id="am-units">
+          {["each", "pair", "set", "kit", "bottle", "case", "L", "mL", "qt", "gal", "ft", "m", "kg", "lb", "oz"].map((u) => (
+            <option key={u} value={u} />
+          ))}
+        </datalist>
       </Field>
+      <label className="row small" style={{ alignSelf: "end", minHeight: 36 }}>
+        <input type="checkbox" checked={value.fractional} onChange={(e) => set("fractional", e.target.checked)} /> Sold in parts of a unit (e.g. 4.5 L of oil)
+      </label>
       <Field label="Warranty">
         <input type="text" value={value.warranty} onChange={(e) => set("warranty", e.target.value)} />
       </Field>
@@ -166,7 +175,7 @@ export function NewItem({ partId, partName, onClose }: { partId?: string; partNa
       <p className="label mt-2">Opening stock (optional)</p>
       <div className="grid" style={{ gridTemplateColumns: "120px 1fr 1fr" }}>
         <Field label="Quantity">
-          <input type="number" min={0} value={qty} onChange={(e) => setQty(e.target.value)} />
+          <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
         </Field>
         <Field label="Location">
           <select value={loc} onChange={(e) => setLoc(e.target.value)}>

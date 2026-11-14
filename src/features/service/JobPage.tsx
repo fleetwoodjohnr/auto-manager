@@ -299,7 +299,7 @@ function AddPart({ d, onClose }: { d: JobDetail; onClose: () => void }) {
       </select>
       {d.job.vehicle_id && <p className="small muted">Tip: the vehicle's Parts in Stock tab lists only parts with fitment records for it.</p>}
       <Field label="Quantity">
-        <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+        <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} />
       </Field>
       <label className="check">
         <input type="checkbox" checked={res} onChange={(e) => setRes(e.target.checked)} /> Reserve the stock now

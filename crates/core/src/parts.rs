@@ -276,8 +276,8 @@ pub struct PartRow {
     /// "OEM 12345 · Barcode 0123..." for the list.
     pub numbers: String,
     pub fitment_count: i64,
-    pub on_hand: i64,
-    pub available: i64,
+    pub on_hand: crate::qty::Qty,
+    pub available: crate::qty::Qty,
 }
 
 #[derive(Deserialize, TS, Clone, Debug, Default)]

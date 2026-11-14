@@ -88,6 +88,7 @@ export type { PriceResult } from "./bindings/PriceResult";
 export type { Profile } from "./bindings/Profile";
 export type { ProfileInput } from "./bindings/ProfileInput";
 export type { PurchaseOrder } from "./bindings/PurchaseOrder";
+export type { Qty } from "./bindings/Qty";
 export type { Qualifier } from "./bindings/Qualifier";
 export type { Rating } from "./bindings/Rating";
 export type { Ratings } from "./bindings/Ratings";

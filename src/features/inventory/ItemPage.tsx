@@ -6,7 +6,7 @@ import { useAction, useCmd } from "../../api/queries";
 import type { ItemDetail } from "../../api/types";
 import { useApp, toast } from "../../store";
 import { ActionsMenu, Badge, Loaded, StockBadge, useConfirm } from "../../ui";
-import { dateTime, money, pct } from "../../lib/format";
+import { dateTime, money, pct, qty } from "../../lib/format";
 import { EditItem } from "./ItemForm";
 import { StockDialog, type StockOp } from "./StockDialog";
 import { AddToEstimate, ReserveDialog } from "../shared/actions";
@@ -104,7 +104,7 @@ export default function ItemPage() {
                     <div className="row mb-2">
                       <StockBadge available={i.available} min={i.min_stock} />
                       <span className="muted">
-                        {i.on_hand} on hand · {i.reserved} reserved{i.damaged ? ` · ${i.damaged} damaged` : ""} · minimum {i.min_stock}
+                        {qty(i.on_hand, i.unit)} on hand · {qty(i.reserved)} reserved{i.damaged ? ` · ${qty(i.damaged)} damaged` : ""} · minimum {qty(i.min_stock)}
                         {i.reorder_qty ? ` · reorder ${i.reorder_qty}` : ""}
                       </span>
                     </div>
@@ -128,9 +128,9 @@ export default function ItemPage() {
                                 {l.location} {l.kind === "damaged" && <Badge tone="warn">quarantine</Badge>}
                               </td>
                               <td>{l.bin || "—"}</td>
-                              <td className="num">{l.on_hand}</td>
-                              <td className="num">{l.reserved || ""}</td>
-                              <td className="num">{l.kind === "damaged" ? "—" : l.available}</td>
+                              <td className="num">{qty(l.on_hand)}</td>
+                              <td className="num">{l.reserved ? qty(l.reserved) : ""}</td>
+                              <td className="num">{l.kind === "damaged" ? "—" : qty(l.available)}</td>
                             </tr>
                           ))}
                         </tbody>

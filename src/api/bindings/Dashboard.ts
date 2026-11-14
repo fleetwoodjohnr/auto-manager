@@ -2,9 +2,10 @@
 import type { Item } from "./Item";
 import type { Job } from "./Job";
 import type { Movement } from "./Movement";
+import type { Qty } from "./Qty";
 import type { Vehicle } from "./Vehicle";
 
-export type Dashboard = { recent_vehicles: Array<Vehicle>, saved_vehicles: number, item_count: number, units_on_hand: number, value_at_cost: string, valuation_method: string, low_stock: Array<Item>, low_stock_count: number, out_of_stock_count: number, 
+export type Dashboard = { recent_vehicles: Array<Vehicle>, saved_vehicles: number, item_count: number, units_on_hand: Qty, value_at_cost: string, valuation_method: string, low_stock: Array<Item>, low_stock_count: number, out_of_stock_count: number, 
 /**
  * Items at or below minimum stock with a reorder quantity set.
  */

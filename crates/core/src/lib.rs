@@ -27,6 +27,7 @@ pub mod parts;
 pub mod pricing;
 pub mod providers;
 pub mod purchasing;
+pub mod qty;
 pub mod quality;
 pub mod reports;
 pub mod search;
@@ -39,4 +40,5 @@ pub mod vehicles;
 pub mod vin;
 
 pub use error::{AppError, AppResult};
+pub use qty::Qty;
 pub use state::{Core, Paths};

@@ -114,7 +114,7 @@ export function StockDialog({ op, item, levels, onClose }: { op: StockOp | null;
           </Field>
         )}
         <Field label={op === "adjust" ? "Quantity actually there" : "Quantity"} error={fe("qty")} hint={op === "adjust" && level ? `Recorded now: ${level.on_hand}` : undefined}>
-          <input type="number" min={op === "adjust" ? 0 : 1} value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
+          <input type="number" min={0} step="any" value={qty} onChange={(e) => setQty(e.target.value)} autoFocus />
         </Field>
         {op === "receive" && (
           <Field label="Cost per unit" error={fe("unit_cost")}>

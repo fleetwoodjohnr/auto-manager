@@ -73,7 +73,7 @@ fn route(conn: &Connection, q: &str) -> AppResult<Option<Route>> {
 fn subtitle(conn: &Connection, kind: &str, id: &str, body: &str) -> AppResult<String> {
     Ok(match kind {
         "item" => {
-            let (sku, avail): (String, i64) = conn.query_row(
+            let (sku, avail): (String, crate::qty::Qty) = conn.query_row(
                 "SELECT i.sku, coalesce((SELECT sum(on_hand - reserved) FROM stock_levels s JOIN inventory_locations l ON l.id = s.location_id WHERE s.item_id = i.id AND l.kind = 'warehouse'), 0)
                  FROM inventory_items i WHERE i.id = ?1",
                 [id],

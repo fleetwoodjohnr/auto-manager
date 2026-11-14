@@ -13,7 +13,7 @@ pub struct Dashboard {
     pub recent_vehicles: Vec<vehicles::Vehicle>,
     pub saved_vehicles: i64,
     pub item_count: i64,
-    pub units_on_hand: i64,
+    pub units_on_hand: crate::qty::Qty,
     #[ts(type = "string")]
     pub value_at_cost: Decimal,
     pub valuation_method: String,

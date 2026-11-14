@@ -3,6 +3,7 @@
 
 use crate::db::{self, clean};
 use crate::error::{AppError, AppResult};
+use crate::qty::Qty;
 use crate::{inventory, money, parts};
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -156,6 +157,14 @@ fn opt_int(s: &str, what: &str) -> Result<Option<i64>, String> {
     t.parse::<i64>().ok().filter(|n| *n >= 0).map(Some).ok_or_else(|| format!("{what} “{s}” isn't a whole number"))
 }
 
+fn opt_qty(s: &str, what: &str) -> Result<Option<Qty>, String> {
+    let t = s.trim();
+    if t.is_empty() {
+        return Ok(None);
+    }
+    Qty::parse("qty", t).ok().filter(|q| *q >= 0).map(Some).ok_or_else(|| format!("{what} “{s}” isn't a quantity (like 2 or 4.5)"))
+}
+
 fn opt_money(s: &str, what: &str) -> Result<Option<String>, String> {
     let t = s.trim();
     if t.is_empty() {
@@ -185,6 +194,8 @@ pub struct InventoryMapping {
     pub bin: Option<usize>,
     pub min_stock: Option<usize>,
     pub reorder_qty: Option<usize>,
+    #[serde(default)]
+    pub unit: Option<usize>,
     pub supplier: Option<usize>,
     pub condition: Option<usize>,
 }
@@ -217,6 +228,7 @@ pub fn guess_inventory_mapping(headers: &[String]) -> InventoryMapping {
         bin: find(&["bin", "shelf"]),
         min_stock: find(&["min", "reorder point", "minimum"]),
         reorder_qty: find(&["reorder qty", "reorder quantity"]),
+        unit: find(&["unit", "uom", "unit of measure"]),
         supplier: find(&["supplier", "vendor"]),
         condition: find(&["condition"]),
     }
@@ -240,12 +252,16 @@ pub struct InventoryRow {
     pub description: String,
     pub cost: Option<String>,
     pub price: Option<String>,
-    pub qty: Option<i64>,
+    pub qty: Option<Qty>,
     pub location_id: Option<String>,
     pub location: String,
     pub bin: String,
-    pub min_stock: Option<i64>,
-    pub reorder_qty: Option<i64>,
+    pub min_stock: Option<Qty>,
+    pub reorder_qty: Option<Qty>,
+    /// "each" unless the sheet says otherwise.
+    pub unit: String,
+    /// The sheet has a quantity in parts of a unit for this item.
+    pub fractional: bool,
     pub supplier: String,
     pub condition: String,
 }
@@ -299,15 +315,17 @@ pub fn preview_inventory(conn: &Connection, table: &Table, m: &InventoryMapping)
         if !category_text.is_empty() && category.is_none() {
             errors.push(format!("category “{category_text}” isn't in the catalog"));
         }
-        let mut num = |s: Result<Option<i64>, String>| {
+        let mut num = |s: Result<Option<Qty>, String>| {
             s.unwrap_or_else(|e| {
                 errors.push(e);
                 None
             })
         };
-        let qty = num(opt_int(&cell(r, m.qty), "Quantity"));
-        let min_stock = num(opt_int(&cell(r, m.min_stock), "Minimum stock"));
-        let reorder_qty = num(opt_int(&cell(r, m.reorder_qty), "Reorder quantity"));
+        let qty = num(opt_qty(&cell(r, m.qty), "Quantity"));
+        let min_stock = num(opt_qty(&cell(r, m.min_stock), "Minimum stock"));
+        let reorder_qty = num(opt_qty(&cell(r, m.reorder_qty), "Reorder quantity"));
+        let fractional = [qty, min_stock, reorder_qty].iter().flatten().any(|q| !q.is_whole());
+        let unit = Some(clean(&cell(r, m.unit))).filter(|u| !u.is_empty()).unwrap_or_else(|| "each".into());
         let mut cash = |s: Result<Option<String>, String>| {
             s.unwrap_or_else(|e| {
                 errors.push(e);
@@ -367,6 +385,8 @@ pub fn preview_inventory(conn: &Connection, table: &Table, m: &InventoryMapping)
             bin: cell(r, m.bin),
             min_stock,
             reorder_qty,
+            unit,
+            fractional,
             supplier: clean(&cell(r, m.supplier)),
             condition,
         });
@@ -439,12 +459,13 @@ pub fn commit_inventory(conn: &Connection, preview: &InventoryPreview) -> AppRes
             &inventory::ItemInput {
                 sku: r.sku.clone(),
                 condition: r.condition.clone(),
-                unit: "each".into(),
+                unit: r.unit.clone(),
+                fractional: r.fractional,
                 cost: r.cost.clone().unwrap_or_else(|| "0".into()),
                 price_override: r.price.clone(),
                 pricing_profile_id: None,
-                min_stock: r.min_stock.unwrap_or(0),
-                reorder_qty: r.reorder_qty.unwrap_or(0),
+                min_stock: r.min_stock.unwrap_or_default(),
+                reorder_qty: r.reorder_qty.unwrap_or_default(),
                 supplier_id,
                 warranty: String::new(),
                 notes: String::new(),
@@ -661,7 +682,7 @@ mod tests {
         let s = commit_inventory(&conn, &p).unwrap();
         assert_eq!(s.created, 1);
         let item = inventory::by_sku(&conn, "OF-1").unwrap().unwrap();
-        assert_eq!((item.on_hand, item.bins.as_str(), item.supplier_name.as_deref()), (8, "Main: A-1", Some("Parts Co")));
+        assert_eq!((item.on_hand, item.bins.as_str(), item.supplier_name.as_deref()), (Qty::units(8), "Main: A-1", Some("Parts Co")));
         assert_eq!(item.category, "Oil filters");
         let again = preview_inventory(&conn, &t, &m).unwrap();
         assert_eq!(again.rows[0].status, "duplicate", "re-importing doesn't duplicate");

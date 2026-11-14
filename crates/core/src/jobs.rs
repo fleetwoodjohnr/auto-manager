@@ -10,6 +10,7 @@ use crate::error::{AppError, AppResult};
 use crate::inventory;
 use crate::money::{self, HUNDRED};
 use crate::pricing::{self, PriceResult};
+use crate::qty::Qty;
 use rusqlite::{Connection, OptionalExtension, params};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -330,12 +331,19 @@ fn next_sort(conn: &Connection, job_id: &str) -> AppResult<i64> {
     Ok(conn.query_row("SELECT coalesce(max(sort), 0) + 1 FROM service_lines WHERE job_id = ?1", [job_id], |r| r.get(0))?)
 }
 
-fn whole(field: &str, qty: &str) -> AppResult<i64> {
-    let q = money::parse(field, "Quantity", qty)?;
-    if q <= Decimal::ZERO || q.fract() != Decimal::ZERO || q > Decimal::from(100_000) {
-        return Err(AppError::invalid(field, "Parts are counted in whole units (1, 2, 3 …)."));
+/// A part quantity: above zero, whole units unless the item is sold in parts of a unit.
+fn part_qty(conn: &Connection, item_id: &str, field: &str, qty: &str) -> AppResult<Qty> {
+    let q = Qty::parse(field, qty)?;
+    if q <= 0 || q > 100_000 {
+        return Err(AppError::invalid(field, "Enter a quantity above zero."));
     }
-    Ok(q.trunc().to_string().parse().unwrap_or(1))
+    inventory::check_whole(conn, item_id, q)?;
+    Ok(q)
+}
+
+/// A part line's quantity as stock (lines store quantities as decimals).
+fn line_qty(l: &Line) -> Qty {
+    Qty::from_decimal(l.qty).unwrap_or_default()
 }
 
 #[derive(Deserialize, TS, Clone, Debug)]
@@ -351,13 +359,19 @@ pub struct PartLineInput {
 pub fn add_part_line(conn: &Connection, job_id: &str, p: &PartLineInput, valuation: &str) -> AppResult<JobDetail> {
     let job = get_job(conn, job_id)?;
     editable(&job)?;
-    let qty = whole("qty", &p.qty)?;
+    let qty = part_qty(conn, &p.item_id, "qty", &p.qty)?;
     let item = inventory::get(conn, &p.item_id)?;
     let customer_profile: Option<String> = match &job.customer_id {
         Some(c) => conn.query_row("SELECT pricing_profile_id FROM customers WHERE id = ?1", [c], |r| r.get(0)).optional()?.flatten(),
         None => None,
     };
-    let price = pricing::price_item(conn, &item.id, qty, &[job.pricing_profile_id.as_deref(), customer_profile.as_deref()], valuation)?;
+    let price = pricing::price_item(
+        conn,
+        &item.id,
+        qty.milli() / 1000,
+        &[job.pricing_profile_id.as_deref(), customer_profile.as_deref()],
+        valuation,
+    )?;
     let unit_price = price.price.ok_or_else(|| {
         AppError::Conflict(format!(
             "{} has no selling price under “{}”. Add a pricing rule or set a fixed price on the item first.",
@@ -455,7 +469,10 @@ pub struct LineUpdate {
 pub fn update_line(conn: &Connection, line_id: &str, u: &LineUpdate) -> AppResult<JobDetail> {
     let l = line(conn, line_id)?;
     editable(&get_job(conn, &l.job_id)?)?;
-    let qty = if l.kind == "part" { Decimal::from(whole("qty", &u.qty)?) } else { money::parse("qty", "Quantity", &u.qty)? };
+    let qty = match (&l.kind[..], &l.item_id) {
+        ("part", Some(item)) => part_qty(conn, item, "qty", &u.qty)?.dec(),
+        _ => money::parse("qty", "Quantity", &u.qty)?,
+    };
     if qty <= Decimal::ZERO {
         return Err(AppError::invalid("qty", "Enter a quantity above zero."));
     }
@@ -506,7 +523,7 @@ pub fn reserve_line(conn: &Connection, line_id: &str) -> AppResult<JobDetail> {
     if l.reservation_status.as_deref() == Some("active") {
         return detail(conn, &l.job_id);
     }
-    let qty = l.qty.trunc().to_string().parse::<i64>().unwrap_or(0);
+    let qty = line_qty(&l);
     let r = inventory::reserve(
         conn,
         &inventory::Reserve {
@@ -562,7 +579,7 @@ pub fn set_status(conn: &Connection, id: &str, to: &str) -> AppResult<JobDetail>
                 let movement = match (&l.reservation_id, l.reservation_status.as_deref()) {
                     (Some(r), Some("active" | "consumed")) => inventory::consume(conn, r)?,
                     _ => {
-                        let qty = l.qty.trunc().to_string().parse::<i64>().unwrap_or(0);
+                        let qty = line_qty(l);
                         let loc: Option<String> = conn
                             .query_row(
                                 "SELECT s.location_id FROM stock_levels s JOIN inventory_locations x ON x.id = s.location_id
@@ -659,8 +676,9 @@ mod tests {
                 cost: "50".into(),
                 price_override: None,
                 pricing_profile_id: None,
-                min_stock: 0,
-                reorder_qty: 0,
+                fractional: false,
+                min_stock: Qty::units(0),
+                reorder_qty: Qty::units(0),
                 supplier_id: None,
                 warranty: String::new(),
                 notes: String::new(),
@@ -672,7 +690,7 @@ mod tests {
             &inv::Receive {
                 item_id: i.id.clone(),
                 location_id: "loc-main".into(),
-                qty: 4,
+                qty: Qty::units(4),
                 unit_cost: Some("50".into()),
                 bin: None,
                 reason: String::new(),
@@ -760,7 +778,7 @@ mod tests {
         let done = set_status(&conn, &j.job.id, "completed").unwrap();
         assert!(done.lines.iter().all(|l| l.consumed));
         let i = inv::get(&conn, &item).unwrap();
-        assert_eq!((i.on_hand, i.reserved), (1, 0), "2 reserved + 1 issued, each once");
+        assert_eq!((i.on_hand, i.reserved), (Qty::units(1), Qty::units(0)), "2 reserved + 1 issued, each once");
         assert!(set_status(&conn, &j.job.id, "completed").is_err(), "can't complete twice");
         let inv1 = set_status(&conn, &j.job.id, "invoiced").unwrap();
         assert_eq!(inv1.job.invoice_number, Some(1001));
@@ -791,7 +809,7 @@ mod tests {
         assert!(set_status(&tx, &j.job.id, "completed").is_err());
         drop(tx);
         let i = inv::get(&conn, &item).unwrap();
-        assert_eq!((i.on_hand, i.reserved), (4, 3), "the failed completion changed nothing");
+        assert_eq!((i.on_hand, i.reserved), (Qty::units(4), Qty::units(3)), "the failed completion changed nothing");
     }
 
     #[test]

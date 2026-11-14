@@ -3,6 +3,7 @@
 
 use crate::db::{self, clean, dec, expect_one};
 use crate::error::{AppError, AppResult};
+use crate::qty::Qty;
 use crate::{inventory, money};
 use rusqlite::{Connection, OptionalExtension, params};
 use rust_decimal::Decimal;
@@ -148,12 +149,12 @@ pub struct Suggestion {
     pub item_id: String,
     pub sku: String,
     pub name: String,
-    pub available: i64,
-    pub min_stock: i64,
-    pub on_order: i64,
+    pub available: Qty,
+    pub min_stock: Qty,
+    pub on_order: Qty,
     /// Units issued or used in the last 90 days.
-    pub used_90d: i64,
-    pub suggested_qty: i64,
+    pub used_90d: Qty,
+    pub suggested_qty: Qty,
     pub supplier_id: Option<String>,
     pub supplier: Option<String>,
     #[ts(type = "string")]
@@ -162,7 +163,7 @@ pub struct Suggestion {
     pub reason: String,
 }
 
-pub fn on_order(conn: &Connection, item_id: &str) -> AppResult<i64> {
+pub fn on_order(conn: &Connection, item_id: &str) -> AppResult<Qty> {
     Ok(conn.query_row(
         "SELECT coalesce(sum(l.qty_ordered - l.qty_received), 0) FROM po_lines l JOIN purchase_orders o ON o.id = l.po_id WHERE l.item_id = ?1 AND o.status IN ('draft', 'ordered', 'partial')",
         [item_id],
@@ -170,7 +171,7 @@ pub fn on_order(conn: &Connection, item_id: &str) -> AppResult<i64> {
     )?)
 }
 
-fn used_90d(conn: &Connection, item_id: &str) -> AppResult<i64> {
+fn used_90d(conn: &Connection, item_id: &str) -> AppResult<Qty> {
     Ok(conn.query_row(
         "SELECT coalesce(-sum(qty), 0) FROM inventory_movements WHERE item_id = ?1 AND kind IN ('issue', 'consume') AND created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')
            AND id NOT IN (SELECT reverses_id FROM inventory_movements WHERE reverses_id IS NOT NULL)",
@@ -202,9 +203,13 @@ pub fn suggestions(conn: &Connection) -> AppResult<Vec<Suggestion>> {
             Some(s) => conn.query_row("SELECT coalesce(lead_time_days, 7) FROM suppliers WHERE id = ?1", [s], |r| r.get(0))?,
             None => 7,
         };
-        let shortfall = (i.min_stock - i.available - ordered).max(0);
-        let during_lead = (used * lead + 89) / 90;
-        let qty = (shortfall + during_lead).max(i.reorder_qty).max(1);
+        let shortfall = (i.min_stock - i.available - ordered).max(Qty::ZERO);
+        // Expected use over the lead time, rounded up (to whole units for whole-unit items).
+        let during_lead = Qty::from_milli((used.milli() * lead + 89) / 90);
+        let mut qty = (shortfall + during_lead).max(i.reorder_qty).max(Qty::units(1));
+        if !i.fractional && !qty.is_whole() {
+            qty = Qty::units(qty.milli() / 1000 + 1);
+        }
         let unit_cost = match &supplier_id {
             Some(s) => prices_for_item(conn, &i.id)?.into_iter().find(|p| &p.supplier_id == s).and_then(|p| p.cost).unwrap_or(i.cost),
             None => i.cost,
@@ -241,8 +246,8 @@ pub struct PoLine {
     pub sku: String,
     pub name: String,
     pub supplier_sku: String,
-    pub qty_ordered: i64,
-    pub qty_received: i64,
+    pub qty_ordered: Qty,
+    pub qty_received: Qty,
     #[ts(type = "string")]
     pub unit_cost: Decimal,
     #[ts(type = "string")]
@@ -304,7 +309,7 @@ pub fn get_po(conn: &Connection, id: &str) -> AppResult<PurchaseOrder> {
     po.lines = st
         .query_map(params![id, po.supplier_id], |r| {
             let unit_cost = dec(r, "unit_cost")?;
-            let q: i64 = r.get(5)?;
+            let q: Qty = r.get(5)?;
             Ok(PoLine {
                 id: r.get(0)?,
                 item_id: r.get(1)?,
@@ -314,7 +319,7 @@ pub fn get_po(conn: &Connection, id: &str) -> AppResult<PurchaseOrder> {
                 qty_ordered: q,
                 qty_received: r.get(6)?,
                 unit_cost,
-                amount: money::round_money(unit_cost * Decimal::from(q)),
+                amount: money::round_money(unit_cost * q.dec()),
             })
         })?
         .collect::<Result<_, _>>()?;
@@ -350,11 +355,12 @@ fn draft(conn: &Connection, po_id: &str) -> AppResult<PurchaseOrder> {
     Ok(po)
 }
 
-pub fn add_line(conn: &Connection, po_id: &str, item_id: &str, qty: i64, unit_cost: Option<&str>) -> AppResult<PurchaseOrder> {
+pub fn add_line(conn: &Connection, po_id: &str, item_id: &str, qty: Qty, unit_cost: Option<&str>) -> AppResult<PurchaseOrder> {
     let po = draft(conn, po_id)?;
-    if qty < 1 {
-        return Err(AppError::invalid("qty", "Order at least 1."));
+    if qty <= 0 {
+        return Err(AppError::invalid("qty", "Enter a quantity above zero."));
     }
+    inventory::check_whole(conn, item_id, qty)?;
     let item = inventory::get(conn, item_id)?;
     let cost = match unit_cost.map(str::trim).filter(|c| !c.is_empty()) {
         Some(c) => money::non_negative("unit_cost", "Cost", money::parse("unit_cost", "Cost", c)?)?,
@@ -370,15 +376,16 @@ pub fn add_line(conn: &Connection, po_id: &str, item_id: &str, qty: i64, unit_co
     get_po(conn, po_id)
 }
 
-pub fn update_line(conn: &Connection, line_id: &str, qty: i64, unit_cost: &str) -> AppResult<PurchaseOrder> {
-    let po_id: String = conn
-        .query_row("SELECT po_id FROM po_lines WHERE id = ?1", [line_id], |r| r.get(0))
+pub fn update_line(conn: &Connection, line_id: &str, qty: Qty, unit_cost: &str) -> AppResult<PurchaseOrder> {
+    let (po_id, item_id): (String, String) = conn
+        .query_row("SELECT po_id, item_id FROM po_lines WHERE id = ?1", [line_id], |r| Ok((r.get(0)?, r.get(1)?)))
         .optional()?
         .ok_or_else(|| AppError::not_found("That line"))?;
     draft(conn, &po_id)?;
-    if qty < 1 {
-        return Err(AppError::invalid("qty", "Order at least 1."));
+    if qty <= 0 {
+        return Err(AppError::invalid("qty", "Enter a quantity above zero."));
     }
+    inventory::check_whole(conn, &item_id, qty)?;
     let cost = money::non_negative("unit_cost", "Cost", money::parse("unit_cost", "Cost", unit_cost)?)?;
     conn.execute("UPDATE po_lines SET qty_ordered = ?2, unit_cost = ?3 WHERE id = ?1", params![line_id, qty, cost.to_string()])?;
     get_po(conn, &po_id)
@@ -452,7 +459,7 @@ pub fn delete_po(conn: &Connection, id: &str) -> AppResult<()> {
 #[ts(export)]
 pub struct ReceiveLine {
     pub line_id: String,
-    pub qty: i64,
+    pub qty: Qty,
 }
 
 /// Receive (part of) an order into a location. Each line goes through the inventory ledger;
@@ -497,9 +504,9 @@ pub fn receive(conn: &Connection, po_id: &str, location_id: &str, lines: &[Recei
 
 /// Turn reorder suggestions into draft orders, one per supplier. Items without a supplier are
 /// left out (returned) so the person can choose one.
-pub fn orders_from_suggestions(conn: &Connection, picks: &[(String, i64)]) -> AppResult<(Vec<PurchaseOrder>, Vec<String>)> {
+pub fn orders_from_suggestions(conn: &Connection, picks: &[(String, Qty)]) -> AppResult<(Vec<PurchaseOrder>, Vec<String>)> {
     let all = suggestions(conn)?;
-    let mut by_supplier: std::collections::BTreeMap<String, Vec<(String, i64, Decimal)>> = Default::default();
+    let mut by_supplier: std::collections::BTreeMap<String, Vec<(String, Qty, Decimal)>> = Default::default();
     let mut skipped = Vec::new();
     for (item_id, qty) in picks {
         let s = all.iter().find(|s| &s.item_id == item_id);
@@ -525,7 +532,7 @@ pub struct CostPoint {
     pub date: String,
     #[ts(type = "string")]
     pub unit_cost: Decimal,
-    pub qty: i64,
+    pub qty: Qty,
     pub reference: String,
 }
 
@@ -563,8 +570,9 @@ mod tests {
                 cost: "4".into(),
                 price_override: None,
                 pricing_profile_id: None,
-                min_stock: 5,
-                reorder_qty: 10,
+                fractional: false,
+                min_stock: Qty::units(5),
+                reorder_qty: Qty::units(10),
                 supplier_id: Some(sup.id.clone()),
                 warranty: String::new(),
                 notes: String::new(),
@@ -582,7 +590,7 @@ mod tests {
             &inv::Receive {
                 item_id: item.clone(),
                 location_id: "loc-main".into(),
-                qty: 20,
+                qty: Qty::units(20),
                 unit_cost: None,
                 bin: None,
                 reason: String::new(),
@@ -596,7 +604,7 @@ mod tests {
             &inv::Change {
                 item_id: item.clone(),
                 location_id: "loc-main".into(),
-                qty: 18,
+                qty: Qty::units(18),
                 reason: String::new(),
                 ref_kind: None,
                 ref_id: None,
@@ -619,21 +627,21 @@ mod tests {
         // shortfall 3 + 18 used in 90 days × 9 days lead ÷ 90 = 2 → 5, but at least reorder qty 10.
         assert_eq!(s[0].suggested_qty, 10);
         assert_eq!(s[0].unit_cost.to_string(), "3.50");
-        let (pos, skipped) = orders_from_suggestions(&conn, &[(item.clone(), 10)]).unwrap();
+        let (pos, skipped) = orders_from_suggestions(&conn, &[(item.clone(), Qty::units(10))]).unwrap();
         assert!(skipped.is_empty());
         assert!(suggestions(&conn).unwrap().is_empty(), "already on order");
         let po = set_po_status(&conn, &pos[0].id, "ordered").unwrap();
-        let po = receive(&conn, &po.id, "loc-main", &[ReceiveLine { line_id: po.lines[0].id.clone(), qty: 4 }]).unwrap();
+        let po = receive(&conn, &po.id, "loc-main", &[ReceiveLine { line_id: po.lines[0].id.clone(), qty: Qty::units(4) }]).unwrap();
         assert_eq!(po.status, "partial");
         assert!(
-            receive(&conn, &po.id, "loc-main", &[ReceiveLine { line_id: po.lines[0].id.clone(), qty: 7 }]).is_err(),
+            receive(&conn, &po.id, "loc-main", &[ReceiveLine { line_id: po.lines[0].id.clone(), qty: Qty::units(7) }]).is_err(),
             "can't receive more than ordered"
         );
-        let po = receive(&conn, &po.id, "loc-main", &[ReceiveLine { line_id: po.lines[0].id.clone(), qty: 6 }]).unwrap();
+        let po = receive(&conn, &po.id, "loc-main", &[ReceiveLine { line_id: po.lines[0].id.clone(), qty: Qty::units(6) }]).unwrap();
         assert_eq!(po.status, "received");
         assert_eq!(inv::get(&conn, &item).unwrap().on_hand, 12);
         assert_eq!(cost_history(&conn, &item).unwrap()[0].reference, format!("PO {}", po.number));
-        assert!(add_line(&conn, &po.id, &item, 1, None).is_err(), "sent orders are locked");
+        assert!(add_line(&conn, &po.id, &item, Qty::units(1), None).is_err(), "sent orders are locked");
     }
 
     #[test]
