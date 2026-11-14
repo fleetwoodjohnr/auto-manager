@@ -52,9 +52,11 @@ pub fn set_models_dir(dir: PathBuf) {
 }
 
 fn engine() -> Option<&'static ocrs::OcrEngine> {
+    // Not initialized until the models' folder is known, so a scan before start-up finishes
+    // can't leave text recognition switched off for good.
+    let dir = MODELS.get()?;
     ENGINE
         .get_or_init(|| {
-            let dir = MODELS.get()?;
             let load = |n: &str| rten::Model::load_file(dir.join(n)).map_err(|e| tracing::warn!("OCR model {n}: {e}")).ok();
             let params = ocrs::OcrEngineParams {
                 detection_model: Some(load("text-detection.onnx")?),
