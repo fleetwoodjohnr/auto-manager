@@ -84,7 +84,13 @@ jobs:
       # Install every package the way a person would, run it, update it, uninstall it.
       - name: Install, run and update the packages
         shell: bash
+        # Normally a few minutes. A hang must end the step while the runner can still upload the logs.
+        timeout-minutes: 20
         run: python scripts/package-smoke.py --bundle target/${{ matrix.target }}/release/bundle --arch ${{ matrix.arch }} --logs target/smoke-logs --harness target/debug/examples/update_rehearsal${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: What was still running
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: Get-Process | Sort-Object CPU -Descending | Select-Object -First 30 Name, Id, CPU, @{n='MB';e={[int]($_.WorkingSet64/1MB)}}, Path | Format-Table -AutoSize | Out-String -Width 300
       - uses: actions/upload-artifact@v4
         if: always()
         with:

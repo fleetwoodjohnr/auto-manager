@@ -30,7 +30,7 @@ OCR_MODELS = ('text-detection.onnx', 'text-recognition.onnx')
 
 
 def run(args, log, *, cwd=None, env=None, timeout=120):
-    print('Running:', ' '.join(map(str, args)), flush=True)
+    print(time.strftime('%H:%M:%S'), 'Running:', ' '.join(map(str, args)), flush=True)
     # A ShellExecute/NSIS descendant can inherit a PIPE after the example exits. On Windows
     # subprocess.run's timeout then waits forever for EOF; a log file has no pipe reader.
     with log.open('ab') as output:
@@ -431,6 +431,21 @@ def linux(bundle, arch, work, logs, harness):
     rehearse_update(harness, old_image, image, f'linux-{arch}-appimage', profile, logs)
 
 
+class Tee:
+    """Progress goes to the job log and to smoke.log: if the runner dies, the job log is lost."""
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, text):
+        for stream in self.streams:
+            stream.write(text)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--bundle', type=Path, required=True)
@@ -440,6 +455,7 @@ def main():
     args = parser.parse_args()
     args.logs.mkdir(parents=True, exist_ok=True)
     args.logs = args.logs.resolve()
+    sys.stdout = Tee(sys.stdout, (args.logs / 'smoke.log').open('a', encoding='utf-8'))
     if not args.harness.is_file():
         raise RuntimeError(f'Updater rehearsal harness missing: {args.harness}')
     with tempfile.TemporaryDirectory(prefix='am-smoke-', dir='/tmp' if sys.platform == 'darwin' else None) as temporary:
