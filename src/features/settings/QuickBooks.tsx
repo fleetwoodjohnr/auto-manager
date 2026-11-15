@@ -156,7 +156,7 @@ function ImportExport() {
       <details className="mt-2">
         <summary>{t("How to export from QuickBooks")}</summary>
         <ul className="small">
-          <li>{t("QuickBooks Online: Sales → Products and services → More → Export to Excel. Customers and vendors: open the list, then Export to Excel.")}</li>
+          <li>{t("QuickBooks Online: ⚙ Settings → Products and services → More → Run report → Export to Excel. Customers and vendors: open the list, then Export to Excel.")}</li>
           <li>{t("QuickBooks Desktop: Lists → Item List → Excel → Export all items. Customer Center or Vendor Center → Excel → Export Customer List or Vendor List.")}</li>
         </ul>
       </details>
