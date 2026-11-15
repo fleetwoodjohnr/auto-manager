@@ -93,7 +93,7 @@ pub fn store() -> Box<dyn Secrets> {
     if std::env::var("AUTO_MANAGER_SECRET_STORE").as_deref() == Ok("memory") { Box::new(Memory::default()) } else { Box::new(Keyring) }
 }
 
-impl<T: Secrets> Secrets for std::sync::Arc<T> {
+impl<T: Secrets + ?Sized> Secrets for std::sync::Arc<T> {
     fn get(&self, id: &str) -> AppResult<Option<String>> {
         (**self).get(id)
     }

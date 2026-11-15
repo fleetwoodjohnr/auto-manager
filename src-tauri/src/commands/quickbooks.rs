@@ -3,9 +3,10 @@
 //! through `quickbooks::online`; its data is fetched for the preview and kept in memory until
 //! applied, so the preview and what's applied are the same answer from QuickBooks.
 
-use auto_manager_core::quickbooks::online::{self, Connection, Keys, Online, SignIn, Urls};
+use auto_manager_core::quickbooks::online::{self, Connection, KeySource, Keys, Online, SignIn, Urls};
 use auto_manager_core::quickbooks::{self, QbData, QbOptions, QbPreview, QbSummary, files::ExportKind};
-use auto_manager_core::{AppError, AppResult, Core, db, secrets};
+use auto_manager_core::secrets::{self, Secrets};
+use auto_manager_core::{AppError, AppResult, Core, db};
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -34,25 +35,45 @@ pub fn quickbooks_file_apply(core: State<'_, Core>, path: String, options: QbOpt
 
 // ---------------------------------------------------------------- QuickBooks Online
 
-/// QuickBooks Online state for this window: the client (when this build has keys), a sign-in
-/// in progress, and the last data read for a preview.
-#[derive(Default)]
+/// QuickBooks Online state for this window: the secret store (the app's keys and the
+/// sign-in), the client (when there are keys), a sign-in in progress, and the last data read
+/// for a preview.
 pub struct Qbo {
-    online: tokio::sync::OnceCell<Option<Arc<Online>>>,
+    secrets: Arc<dyn Secrets>,
+    online: Mutex<Option<Arc<Online>>>,
     sign_in: Mutex<Option<Arc<SignIn>>>,
     fetched: Mutex<Option<(String, QbData)>>,
 }
 
+impl Default for Qbo {
+    fn default() -> Self {
+        Qbo { secrets: secrets::store().into(), online: Mutex::default(), sign_in: Mutex::default(), fetched: Mutex::default() }
+    }
+}
+
 impl Qbo {
-    async fn online(&self) -> Option<Arc<Online>> {
-        self.online
-            .get_or_init(|| async { Keys::get().map(|k| Arc::new(Online::new(k.clone(), Urls::new(k.production), secrets::store()))) })
-            .await
-            .clone()
+    /// The client for the current keys, made when first needed (and again after they change).
+    fn online(&self) -> Option<Arc<Online>> {
+        let mut slot = self.online.lock().unwrap_or_else(|e| e.into_inner());
+        if slot.is_none() {
+            *slot = Keys::find(&*self.secrets)
+                .map(|k| Arc::new(Online::new(k.clone(), Urls::new(k.production), Box::new(self.secrets.clone()))));
+        }
+        slot.clone()
     }
 
-    async fn client(&self) -> AppResult<Arc<Online>> {
-        self.online().await.ok_or_else(|| AppError::msg("This copy of Auto Manager was built without QuickBooks Online keys."))
+    fn client(&self) -> AppResult<Arc<Online>> {
+        self.online().ok_or_else(|| AppError::msg("Enter your Intuit app's keys first."))
+    }
+
+    /// The keys can't change under a connection: its sign-in belongs to the app that made it.
+    fn change_keys(&self, core: &Core, change: impl FnOnce(&dyn Secrets) -> AppResult<()>) -> AppResult<()> {
+        if online::load_connection(&core.paths.root).is_some() {
+            return Err(AppError::msg("Disconnect from QuickBooks first, then change the keys."));
+        }
+        change(&*self.secrets)?;
+        *self.online.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        Ok(())
     }
 }
 
@@ -66,32 +87,58 @@ fn connection(core: &Core) -> AppResult<Connection> {
 
 #[derive(Serialize)]
 pub struct QboStatus {
-    /// This build has QuickBooks Online keys.
+    /// There are Intuit app keys to connect with.
     pub available: bool,
     /// "sandbox" or "production" (the keys' environment)
     pub environment: Option<&'static str>,
+    pub source: Option<KeySource>,
+    /// Not secret: Intuit shows it in the browser's address. The client secret never leaves.
+    pub client_id: Option<String>,
+    /// The redirect URI the Intuit app must list.
+    pub redirect: String,
     pub connection: Option<Connection>,
     pub signing_in: bool,
 }
 
-#[tauri::command]
-pub async fn quickbooks_status(core: State<'_, Core>, qbo: State<'_, Qbo>) -> AppResult<QboStatus> {
-    let client = qbo.online().await;
+#[tauri::command(async)]
+pub fn quickbooks_status(core: State<'_, Core>, qbo: State<'_, Qbo>) -> AppResult<QboStatus> {
+    let client = qbo.online();
+    let keys = client.as_ref().map(|c| c.keys());
     Ok(QboStatus {
-        available: client.is_some(),
-        environment: client.as_ref().map(|c| c.environment()),
+        available: keys.is_some(),
+        environment: keys.map(|k| k.environment()),
+        source: keys.map(|k| k.source),
+        client_id: keys.map(|k| k.client_id.clone()),
+        redirect: Urls::new(false).redirect,
         connection: online::load_connection(&core.paths.root),
         signing_in: qbo.sign_in.lock().unwrap_or_else(|e| e.into_inner()).is_some(),
     })
+}
+
+/// Keep the person's own Intuit app keys (in the OS keyring).
+#[tauri::command(async)]
+pub fn quickbooks_keys_save(
+    core: State<'_, Core>,
+    qbo: State<'_, Qbo>,
+    client_id: String,
+    client_secret: String,
+    production: bool,
+) -> AppResult<()> {
+    qbo.change_keys(&core, |s| Keys::save(s, &client_id, &client_secret, production))
+}
+
+#[tauri::command(async)]
+pub fn quickbooks_keys_forget(core: State<'_, Core>, qbo: State<'_, Qbo>) -> AppResult<()> {
+    qbo.change_keys(&core, Keys::forget)
 }
 
 /// Open Intuit's sign-in in the browser and wait for its answer (up to 5 minutes).
 #[tauri::command]
 pub async fn quickbooks_connect(app: AppHandle, core: State<'_, Core>, qbo: State<'_, Qbo>) -> AppResult<Connection> {
     use tauri_plugin_opener::OpenerExt;
-    let client = qbo.client().await?;
-    let keys = Keys::get().ok_or_else(|| AppError::msg("This copy of Auto Manager was built without QuickBooks Online keys."))?;
-    let sign_in = Arc::new(online::begin(&keys, &Urls::new(keys.production))?);
+    let client = qbo.client()?;
+    let keys = client.keys();
+    let sign_in = Arc::new(online::begin(keys, &Urls::new(keys.production))?);
     if let Some(old) = qbo.sign_in.lock().unwrap_or_else(|e| e.into_inner()).replace(sign_in.clone()) {
         old.cancel();
     }
@@ -152,7 +199,7 @@ pub async fn quickbooks_preview(core: State<'_, Core>, qbo: State<'_, Qbo>, opti
     let data = match cached {
         Some((_, d)) => d,
         None => {
-            let d = qbo.client().await?.read_all(&c.realm).await?;
+            let d = qbo.client()?.read_all(&c.realm).await?;
             *qbo.fetched.lock().unwrap_or_else(|e| e.into_inner()) = Some((c.realm.clone(), d.clone()));
             d
         }
@@ -178,7 +225,7 @@ pub async fn quickbooks_apply(core: State<'_, Core>, qbo: State<'_, Qbo>, option
 #[tauri::command]
 pub async fn quickbooks_disconnect(core: State<'_, Core>, qbo: State<'_, Qbo>) -> AppResult<Option<String>> {
     let c = connection(&core)?;
-    let note = match qbo.online().await {
+    let note = match qbo.online() {
         Some(client) => client.disconnect(&c.realm).await?,
         None => None,
     };

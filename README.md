@@ -112,7 +112,20 @@ There are two ways, both in **Settings → QuickBooks**.
 
 ### Connect to QuickBooks Online
 
-1. Open **Settings → QuickBooks → Connect to QuickBooks**.
+Connecting needs the keys of an Intuit developer app. Creating one is free, and you only do it once.
+
+1. Sign in at [developer.intuit.com](https://developer.intuit.com) and create an app for QuickBooks Online with the **Accounting** scope.
+2. In the app's settings, add this redirect URI: `https://fleetwoodjohnr.github.io/auto-manager/quickbooks/` (under **Development** for a sandbox company, under **Production** for your real company). Settings → QuickBooks shows the same address with a **Copy** button.
+3. Open the app's **Keys and credentials** and copy the **Client ID** and **Client Secret**.
+4. In Auto Manager, open **Settings → QuickBooks**, choose what the keys are for (**A sandbox company (Development keys)** or **A real company (Production keys)**), paste both keys and select **Save keys**. They're kept in your system's keyring on this computer; the Client Secret isn't shown again. **Change keys** and **Remove keys** are there while you aren't connected.
+
+![Settings → QuickBooks: the steps to create an Intuit app, the redirect URI with a Copy button, and the boxes for the Client ID and Client Secret](docs/screenshots/quickbooks-keys.png)
+
+Development keys only reach Intuit's sandbox companies (test data Intuit creates for your developer account). To bring in your real company, use the app's Production keys, which Intuit issues after you complete its app assessment.
+
+Then connect:
+
+1. Select **Connect to QuickBooks**.
 2. Your browser opens Intuit's sign-in page. Sign in, choose the company, and select **Connect**.
 3. The browser comes back to a page that hands the answer to Auto Manager on your computer, and Auto Manager shows **Connected to *your company***.
 4. The review opens straight away: check it and choose **Apply changes**.
@@ -120,7 +133,7 @@ There are two ways, both in **Settings → QuickBooks**.
 
 If the browser can't hand the answer back (some browsers block it), the page shows its address: copy it into the box in Auto Manager's **Connect to QuickBooks** window.
 
-**Availability:** connecting straight to QuickBooks Online works once Intuit approves Auto Manager for live companies. Until a release includes that approval, the screen says the connection isn't available yet; the export import above brings in the same data.
+**Without your own Intuit app**, the export import above brings in the same data.
 
 ### What to expect
 

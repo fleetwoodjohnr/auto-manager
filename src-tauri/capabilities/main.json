@@ -135,6 +135,8 @@
     "allow-quickbooks-file-preview",
     "allow-quickbooks-file-apply",
     "allow-quickbooks-status",
+    "allow-quickbooks-keys-save",
+    "allow-quickbooks-keys-forget",
     "allow-quickbooks-connect",
     "allow-quickbooks-sign-in-url",
     "allow-quickbooks-finish",

@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { click, fill, invoke, launch, nav, root, stopDisplay, waitText } from "./harness.mjs";
+import { choose, click, fill, invoke, launch, nav, root, stopDisplay, waitText } from "./harness.mjs";
 import { startFixtures } from "./fixture-server.mjs";
 
 const OUT = path.join(root, "docs/screenshots");
@@ -83,10 +83,6 @@ const app = await launch({
   dataDir: path.join(scratch, "data"),
   env: {
     ...fx.env,
-    AUTO_MANAGER_QBO_CLIENT_ID: "sample",
-    AUTO_MANAGER_QBO_CLIENT_SECRET: "sample",
-    // Shown as a release with production keys will look (no "sandbox" badge).
-    AUTO_MANAGER_QBO_ENV: "production",
     AUTO_MANAGER_QBO_AUTH_URL: `${base}/authorize`,
     AUTO_MANAGER_QBO_TOKEN_URL: `${base}/token`,
     AUTO_MANAGER_QBO_REVOKE_URL: `${base}/revoke`,
@@ -117,9 +113,19 @@ try {
   };
   await theme("light");
 
-  // QuickBooks Online: connect, review, apply.
+  // QuickBooks Online: the Intuit app's keys, connect, review, apply. The redirect address shown
+  // is the real one (the stand-in's goes to the app directly).
   await nav(b, "Settings");
   await click(b, "QuickBooks", { exact: true });
+  await waitText(b, "needs the keys of an Intuit developer app");
+  await choose(b, "Keys for", "real company");
+  await fill(b, "Client ID", "ABsampleClientId0000000000000000000000000000000");
+  await fill(b, "Client Secret", "sample-secret");
+  await b.execute(() => {
+    document.querySelector('input[aria-label="Redirect URI"]').value = "https://fleetwoodjohnr.github.io/auto-manager/quickbooks/";
+  });
+  await shot("quickbooks-keys");
+  await click(b, "Save keys");
   await waitText(b, "Sign in with your QuickBooks account");
   await click(b, "Connect to QuickBooks");
   let url = null;

@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FileSpreadsheet, Link2, RefreshCw, Unlink } from "lucide-react";
+import { Copy, FileSpreadsheet, KeyRound, Link2, RefreshCw, Unlink } from "lucide-react";
 import { call, errorMessage } from "../../api/ipc";
 import { useCmd, useRefresh } from "../../api/queries";
-import type { Connection, QbOptions, QbPreview, QbRow, QbSummary } from "../../api/types";
+import type { Connection, KeySource, QbOptions, QbPreview, QbRow, QbSummary } from "../../api/types";
 import { ago } from "../../lib/format";
 import { toast } from "../../store";
-import { Badge, ErrorNote, Modal, Spinner, useConfirm } from "../../ui";
+import { Badge, ErrorNote, ExtLink, Field, Modal, Spinner, useConfirm } from "../../ui";
 import { t, tm, tx } from "../../i18n";
 
 const DEFAULTS: QbOptions = { use_prices: true, non_inventory: false, apply_stock: false, apply_cost: false };
@@ -183,7 +183,86 @@ function ImportExport() {
   );
 }
 
-type Status = { available: boolean; environment: string | null; connection: Connection | null; signing_in: boolean };
+type Status = {
+  available: boolean;
+  environment: string | null;
+  source: KeySource | null;
+  client_id: string | null;
+  redirect: string;
+  connection: Connection | null;
+  signing_in: boolean;
+};
+
+const short = (id: string) => (id.length > 12 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id);
+
+/** The person's own Intuit developer app: where to get its keys, and the boxes to enter them. */
+function KeysForm({ redirect, onSaved, onCancel }: { redirect: string; onSaved: () => void; onCancel?: () => void }) {
+  const [clientId, setClientId] = useState("");
+  const [secret, setSecret] = useState("");
+  const [production, setProduction] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(redirect);
+      toast(t("Copied"));
+    } catch {
+      toast(t("Select the address and copy it."), { tone: "bad" });
+    }
+  };
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await call("quickbooks_keys_save", { clientId, clientSecret: secret, production });
+      setSecret("");
+      toast(t("QuickBooks keys saved"));
+      onSaved();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="stack mt-2" onSubmit={save}>
+      <ol className="small stack" style={{ gap: 6, paddingLeft: 20, listStyle: "decimal" }}>
+        <li>{tx("Sign in at {0} and create an app for QuickBooks Online with the Accounting scope.", <ExtLink key="l" href="https://developer.intuit.com/app/developer/dashboard">developer.intuit.com</ExtLink>)}</li>
+        <li>
+          {t("In the app's settings, add this redirect URI: under Development for a sandbox company, under Production for your real company.")}
+          <div className="row mt-2">
+            <input type="text" className="grow" readOnly value={redirect} aria-label={t("Redirect URI")} onFocus={(e) => e.currentTarget.select()} />
+            <button type="button" className="btn" onClick={copy}>
+              <Copy size={16} aria-hidden />{" "}{t("Copy")}</button>
+          </div>
+        </li>
+        <li>{t("From the app's Keys and credentials, copy the Client ID and Client Secret into the boxes below.")}</li>
+      </ol>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        <Field label={t("Keys for")}>
+          <select value={production ? "production" : "sandbox"} onChange={(e) => setProduction(e.target.value === "production")}>
+            <option value="sandbox">{t("A sandbox company (Development keys)")}</option>
+            <option value="production">{t("A real company (Production keys)")}</option>
+          </select>
+        </Field>
+        <Field label={t("Client ID")}>
+          <input type="text" value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" spellCheck={false} />
+        </Field>
+        <Field label={t("Client Secret")}>
+          <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete="new-password" />
+        </Field>
+      </div>
+      {error != null && <ErrorNote error={error} />}
+      <div className="row">
+        <button type="submit" className="btn primary" disabled={busy || !clientId.trim() || !secret.trim()}>
+          {busy ? <Spinner /> : <KeyRound size={16} aria-hidden />}{" "}{t("Save keys")}</button>
+        {onCancel && <button type="button" className="btn" onClick={onCancel}>{t("Cancel")}</button>}
+      </div>
+      <p className="small muted">{t("The keys stay on this computer, in the system keyring. The Client Secret isn't shown again.")}</p>
+    </form>
+  );
+}
 
 function SignInDialog({ onClose }: { onClose: () => void }) {
   const [pasted, setPasted] = useState("");
@@ -223,8 +302,22 @@ function Online() {
   const [signingIn, setSigningIn] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [editingKeys, setEditingKeys] = useState(false);
   const first = useRef(true);
   const s = status.data;
+  const keysSaved = async () => {
+    setEditingKeys(false);
+    await status.refetch();
+  };
+  const removeKeys = async () => {
+    if (!(await ask(t("Remove the QuickBooks keys?"), t("Auto Manager forgets your Intuit app's keys on this computer. You can enter them again at any time."), t("Remove keys")))) return;
+    try {
+      await call("quickbooks_keys_forget");
+      await status.refetch();
+    } catch (e) {
+      setError(e);
+    }
+  };
   const connect = async () => {
     setError(null);
     setSigningIn(true);
@@ -260,7 +353,10 @@ function Online() {
     <section className="card">
       <h2>{t("QuickBooks Online")}</h2>
       {!s.available ? (
-        <p className="muted">{t("Connecting straight to QuickBooks Online isn't available in this version yet. Until it is, import an export below: it brings in the same products, prices, stock, customers and vendors.")}</p>
+        <>
+          <p className="muted">{t("To connect, Auto Manager needs the keys of an Intuit developer app. Creating one is free; then enter its keys here. Or import an export below: it brings in the same products, prices, stock, customers and vendors.")}</p>
+          <KeysForm redirect={s.redirect} onSaved={keysSaved} />
+        </>
       ) : c ? (
         <>
           <p>
@@ -268,6 +364,9 @@ function Online() {
             {c.environment === "sandbox" && <Badge tone="warn">{t("sandbox")}</Badge>}
           </p>
           <p className="small muted">{c.last_refresh ? tx("Last brought in {0}.", ago(c.last_refresh)) : t("Nothing brought in yet.")}{" "}{t("Auto Manager only reads from QuickBooks.")}</p>
+          {s.source === "settings" && s.client_id && (
+            <p className="small muted">{tx("Using your Intuit app's keys (Client ID {0}). Disconnect to change them.", <code key="i">{short(s.client_id)}</code>)}</p>
+          )}
           <div className="row mt-2">
             <button
               className="btn primary"
@@ -289,6 +388,23 @@ function Online() {
               <Link2 size={16} aria-hidden />{" "}{t("Connect to QuickBooks")}</button>
             {s.environment === "sandbox" && <Badge tone="warn">{t("sandbox")}</Badge>}
           </div>
+          {s.source === "settings" && s.client_id &&
+            (editingKeys ? (
+              <KeysForm redirect={s.redirect} onSaved={keysSaved} onCancel={() => setEditingKeys(false)} />
+            ) : (
+              <p className="small muted mt-2">
+                {tx("Using your Intuit app's keys (Client ID {0}).", <code key="i">{short(s.client_id)}</code>)}{" "}
+                <button className="btn link" onClick={() => setEditingKeys(true)}>{t("Change keys")}</button>
+                <button className="btn link" onClick={removeKeys}>{t("Remove keys")}</button>
+              </p>
+            ))}
+          {s.source === "built_in" && (
+            <details className="mt-2">
+              <summary>{t("Use your own Intuit app instead")}</summary>
+              <KeysForm redirect={s.redirect} onSaved={keysSaved} />
+            </details>
+          )}
+          {s.source === "environment" && <p className="small muted mt-2">{t("Using the Intuit app keys from the environment (AUTO_MANAGER_QBO_CLIENT_ID).")}</p>}
         </>
       )}
       {error != null && <div className="mt-2"><ErrorNote error={error} /></div>}

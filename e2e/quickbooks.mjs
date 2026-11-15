@@ -1,9 +1,10 @@
 // QuickBooks in the real app.
 //  1. A QuickBooks Online "Products and Services" export imported, then imported again after
 //     QuickBooks changed.
-//  2. The live QuickBooks Online connection against a local stand-in for Intuit: Connect → the
-//     sign-in answer comes back to the app's one-time listener → review → apply → QuickBooks
-//     changes → Bring in again → update → Disconnect (the sign-in revoked).
+//  2. The live QuickBooks Online connection against a local stand-in for Intuit: the Intuit app's
+//     keys entered in Settings → Connect → the sign-in answer comes back to the app's one-time
+//     listener → review → apply → QuickBooks changes → Bring in again → update → Disconnect (the
+//     sign-in revoked) → Remove keys.
 // Screens audited with axe. WebDriver can't drive the native file picker, so the export
 // goes in through the commands the picker's path feeds (as in workflows.mjs); the review window is
 // exercised through the live connection's Refresh, which opens it without a picker.
@@ -12,7 +13,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { bodyText, click, invoke, launch, nav, root, stopDisplay, waitText } from "./harness.mjs";
+import { bodyText, choose, click, fill, invoke, launch, nav, root, stopDisplay, waitText } from "./harness.mjs";
 
 const AXE = readFileSync(path.join(root, "node_modules/axe-core/axe.min.js"), "utf8");
 const scratch = mkdtempSync(path.join(tmpdir(), "am-qb-"));
@@ -91,8 +92,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 const app = await launch({
   dataDir: path.join(scratch, "data"),
   env: {
-    AUTO_MANAGER_QBO_CLIENT_ID: "e2e-client",
-    AUTO_MANAGER_QBO_CLIENT_SECRET: "e2e-secret",
+    // No keys here: they're entered in Settings, as a person would.
     AUTO_MANAGER_QBO_AUTH_URL: `${base}/authorize`,
     AUTO_MANAGER_QBO_TOKEN_URL: `${base}/token`,
     AUTO_MANAGER_QBO_REVOKE_URL: `${base}/revoke`,
@@ -147,7 +147,26 @@ try {
   // ---------------------------------------------------------------- QuickBooks Online
   await nav(b, "Settings");
   await click(b, "QuickBooks", { exact: true });
+  await waitText(b, "needs the keys of an Intuit developer app");
+  assert.equal(
+    await b.execute(() => document.querySelector('input[aria-label="Redirect URI"]').value),
+    "http://127.0.0.1:{port}/quickbooks/callback",
+    "the form shows the redirect address the app uses",
+  );
+  await audit(b, "QuickBooks keys form");
+  await fill(b, "Client ID", "e2e-client");
+  await fill(b, "Client Secret", "bad secret");
+  await click(b, "Save keys");
+  await waitText(b, "Paste the Client Secret from your Intuit app");
+  await fill(b, "Client Secret", "e2e-secret");
+  await choose(b, "Keys for", "sandbox company");
+  await click(b, "Save keys");
   await waitText(b, "Sign in with your QuickBooks account");
+  await waitText(b, "Using your Intuit app's keys (Client ID e2e-client).");
+  assert.ok(!(await bodyText(b)).includes("e2e-secret"), "the secret isn't shown");
+  assert.ok(!JSON.stringify(await invoke(b, "quickbooks_status")).includes("e2e-secret"), "the secret never goes back to the window");
+  await app.shot("qb-2-keys-saved");
+  console.log("  • the Intuit app's keys entered in Settings (a bad secret refused, the secret never shown)");
   await click(b, "Connect to QuickBooks");
   await waitText(b, "Finish signing in to QuickBooks in your browser");
   await audit(b, "QuickBooks sign-in dialog");
@@ -183,10 +202,14 @@ try {
   await waitText(b, "Disconnect QuickBooks?");
   await click(b, "Disconnect", { exact: true });
   await waitText(b, "Sign in with your QuickBooks account");
+  await click(b, "Remove keys");
+  await waitText(b, "Remove the QuickBooks keys?");
+  await click(b, "Remove keys", { exact: true });
+  await waitText(b, "needs the keys of an Intuit developer app");
   assert.deepEqual(intuit.revoked, ["refresh-1"], "the sign-in was revoked at Intuit");
   assert.deepEqual([...intuit.apiMethods], ["GET"], "only reads reached the QuickBooks API");
   assert.equal((await invoke(b, "item_list", { query: {} })).length, 3, "imported records stay");
-  console.log("  • disconnected: sign-in revoked, imported records kept");
+  console.log("  • disconnected: sign-in revoked, imported records kept; the keys removed");
   console.log("quickbooks: file import and QuickBooks Online ok");
 } finally {
   await app.close();

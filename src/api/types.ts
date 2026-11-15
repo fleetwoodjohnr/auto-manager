@@ -57,6 +57,7 @@ export type { Job } from "./bindings/Job";
 export type { JobDetail } from "./bindings/JobDetail";
 export type { JobInput } from "./bindings/JobInput";
 export type { JobQuery } from "./bindings/JobQuery";
+export type { KeySource } from "./bindings/KeySource";
 export type { Label } from "./bindings/Label";
 export type { Line } from "./bindings/Line";
 export type { LineUpdate } from "./bindings/LineUpdate";

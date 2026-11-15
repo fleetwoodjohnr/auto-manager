@@ -5,7 +5,27 @@ use wiremock::matchers::{basic_auth, bearer_token, body_string_contains, method,
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn keys() -> Keys {
-    Keys { client_id: "test-client".into(), client_secret: "test-secret".into(), production: false }
+    Keys { client_id: "test-client".into(), client_secret: "test-secret".into(), production: false, source: KeySource::Settings }
+}
+
+#[test]
+fn keys_entered_in_settings_are_kept_in_the_keyring_and_can_be_removed() {
+    if std::env::var_os("AUTO_MANAGER_QBO_CLIENT_ID").is_some() || option_env!("AUTO_MANAGER_QBO_CLIENT_ID").is_some() {
+        return; // keys from the environment or the build come first
+    }
+    let s = Memory::default();
+    assert!(Keys::find(&s).is_none());
+    for (id, secret) in [("", "x"), ("AB cd", "x"), ("AB", " "), ("AB", &"x".repeat(201))] {
+        assert!(Keys::save(&s, id, secret, false).is_err(), "{id:?} {secret:?}");
+    }
+    assert!(s.get(APP_KEYS).unwrap().is_none(), "nothing stored for bad keys");
+    Keys::save(&s, "  ABcd1234  ", "s3cret\n", true).unwrap();
+    let k = Keys::find(&s).unwrap();
+    assert_eq!((k.client_id.as_str(), k.client_secret.as_str(), k.production, k.source), ("ABcd1234", "s3cret", true, KeySource::Settings));
+    Keys::save(&s, "ABcd1234", "s3cret", false).unwrap();
+    assert_eq!(Keys::find(&s).unwrap().environment(), "sandbox");
+    Keys::forget(&s).unwrap();
+    assert!(Keys::find(&s).is_none());
 }
 
 fn urls(base: &str) -> Urls {
@@ -231,4 +251,22 @@ fn maps_intuit_records() {
         &serde_json::json!({ "Id": "56", "DisplayName": "Parts Plus", "GivenName": "Sam", "FamilyName": "Diaz", "AcctNum": "A-77", "WebAddr": { "URI": "https://partsplus.example" } }),
     );
     assert_eq!((v.contact.as_str(), v.account_no.as_str(), v.website.as_str()), ("Sam Diaz", "A-77", "https://partsplus.example"));
+}
+
+/// The real OS keyring, run by hand: `cargo test -p auto-manager-core -- --ignored real_keyring`.
+#[test]
+#[ignore]
+fn real_keyring_keeps_and_forgets_the_keys() {
+    let k = crate::secrets::Keyring;
+    if k.get(APP_KEYS).unwrap().is_some() {
+        return; // never overwrite keys someone saved
+    }
+    Keys::save(&k, "keyring-check-id", "keyring-check-secret", false).unwrap();
+    let found = Keys::find(&k).unwrap();
+    assert_eq!(
+        (found.client_id.as_str(), found.client_secret.as_str(), found.source),
+        ("keyring-check-id", "keyring-check-secret", KeySource::Settings)
+    );
+    Keys::forget(&k).unwrap();
+    assert!(k.get(APP_KEYS).unwrap().is_none());
 }

@@ -33,25 +33,89 @@ const PAGE: usize = 1000;
 const MINOR_VERSION: &str = "75";
 pub const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
-/// The Intuit app's keys: from the environment when set (development), otherwise built into
-/// this copy of the app by the release workflow. None when this build has no keys.
+/// Where this copy's Intuit app keys came from.
+#[derive(Serialize, TS, Clone, Copy, PartialEq, Debug)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum KeySource {
+    /// `AUTO_MANAGER_QBO_CLIENT_ID`/`_SECRET` (development and tests)
+    Environment,
+    /// The person's own Intuit app, entered in Settings (kept in the OS keyring)
+    Settings,
+    /// Built into this copy by the release workflow
+    BuiltIn,
+}
+
+/// The Intuit app's keys.
 #[derive(Clone)]
 pub struct Keys {
     pub client_id: String,
     pub client_secret: String,
     pub production: bool,
+    pub source: KeySource,
+}
+
+/// The keyring entry holding keys entered in Settings.
+const APP_KEYS: &str = "quickbooks:app-keys";
+
+#[derive(Serialize, Deserialize)]
+struct SavedKeys {
+    client_id: String,
+    client_secret: String,
+    production: bool,
 }
 
 impl Keys {
-    pub fn get() -> Option<Keys> {
-        let pick = |run: &str, built: Option<&'static str>| {
-            std::env::var(run).ok().filter(|v| !v.trim().is_empty()).or(built.map(str::to_string)).filter(|v| !v.trim().is_empty())
-        };
+    /// The environment first, then the keys entered in Settings, then the ones built in.
+    /// None when there are none.
+    pub fn find(secrets: &dyn Secrets) -> Option<Keys> {
+        let env = |k: &str| std::env::var(k).ok().filter(|v| !v.trim().is_empty());
+        let production = |v: Option<&str>| v == Some("production");
+        if let (Some(client_id), Some(client_secret)) = (env("AUTO_MANAGER_QBO_CLIENT_ID"), env("AUTO_MANAGER_QBO_CLIENT_SECRET")) {
+            let production = production(env("AUTO_MANAGER_QBO_ENV").as_deref());
+            return Some(Keys { client_id, client_secret, production, source: KeySource::Environment });
+        }
+        match secrets.get(APP_KEYS) {
+            Ok(Some(s)) => match serde_json::from_str::<SavedKeys>(&s) {
+                Ok(k) => {
+                    return Some(Keys {
+                        client_id: k.client_id,
+                        client_secret: k.client_secret,
+                        production: k.production,
+                        source: KeySource::Settings,
+                    });
+                }
+                Err(e) => tracing::warn!("QuickBooks keys in the keyring are unreadable: {e}"),
+            },
+            Ok(None) => {}
+            Err(e) => tracing::warn!("QuickBooks keys: {e}"),
+        }
+        let built = |v: Option<&'static str>| v.filter(|v| !v.trim().is_empty()).map(str::to_string);
         Some(Keys {
-            client_id: pick("AUTO_MANAGER_QBO_CLIENT_ID", option_env!("AUTO_MANAGER_QBO_CLIENT_ID"))?,
-            client_secret: pick("AUTO_MANAGER_QBO_CLIENT_SECRET", option_env!("AUTO_MANAGER_QBO_CLIENT_SECRET"))?,
-            production: pick("AUTO_MANAGER_QBO_ENV", option_env!("AUTO_MANAGER_QBO_ENV")).as_deref() == Some("production"),
+            client_id: built(option_env!("AUTO_MANAGER_QBO_CLIENT_ID"))?,
+            client_secret: built(option_env!("AUTO_MANAGER_QBO_CLIENT_SECRET"))?,
+            production: production(option_env!("AUTO_MANAGER_QBO_ENV")),
+            source: KeySource::BuiltIn,
         })
+    }
+
+    /// Keep the person's own Intuit app keys (from its Keys and credentials page).
+    pub fn save(secrets: &dyn Secrets, client_id: &str, client_secret: &str, production: bool) -> AppResult<()> {
+        let clean = |v: &str| {
+            Some(v.trim()).filter(|v| !v.is_empty() && v.len() <= 200 && v.bytes().all(|b| b.is_ascii_graphic())).map(str::to_string)
+        };
+        let k = SavedKeys {
+            client_id: clean(client_id).ok_or_else(|| AppError::msg("Paste the Client ID from your Intuit app's Keys and credentials."))?,
+            client_secret: clean(client_secret)
+                .ok_or_else(|| AppError::msg("Paste the Client Secret from your Intuit app's Keys and credentials."))?,
+            production,
+        };
+        secrets.set(APP_KEYS, &serde_json::to_string(&k)?)
+    }
+
+    /// Forget the keys entered in Settings.
+    pub fn forget(secrets: &dyn Secrets) -> AppResult<()> {
+        secrets.delete(APP_KEYS)
     }
 
     pub fn environment(&self) -> &'static str {
@@ -322,6 +386,10 @@ impl Online {
 
     pub fn environment(&self) -> &'static str {
         self.keys.environment()
+    }
+
+    pub fn keys(&self) -> &Keys {
+        &self.keys
     }
 
     fn secret_id(&self, realm: &str) -> String {
