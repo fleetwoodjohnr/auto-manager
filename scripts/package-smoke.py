@@ -109,19 +109,24 @@ def check_models(directory, label):
 
 
 def launch(command, profile, logs, *, extra_env=None):
-    """The installed app must start its window and stay up for 10 seconds."""
+    """The installed app must open its database and stay up for at least 10 seconds."""
     env = isolated_env(profile, extra_env)
     log = logs / 'application.log'
+    database = profile / 'data' / 'auto-manager.db'
+    print(time.strftime('%H:%M:%S'), 'Launching:', command[0], flush=True)
     with log.open('ab') as output:
         proc = subprocess.Popen(list(map(str, command)), env=env, stdout=output, stderr=subprocess.STDOUT,
                                 start_new_session=os.name != 'nt')
         try:
-            deadline = time.monotonic() + 10
-            while time.monotonic() < deadline:
+            # A cold runner (first WebView2 start, antivirus scan) can take well over 10 seconds.
+            started = time.monotonic()
+            while (elapsed := time.monotonic() - started) < 10 or not database.is_file():
                 if proc.poll() is not None:
                     raise RuntimeError(f'Application exited early ({proc.returncode}); see {log}')
+                if elapsed > 120:
+                    raise RuntimeError(f'The launched app did not create its database in 120 seconds; see {log}')
                 time.sleep(0.2)
-            print('Installed application stayed running for 10 seconds', flush=True)
+            print(f'Installed application created its database and stayed running for {elapsed:.0f} seconds', flush=True)
         finally:
             if os.name == 'nt':
                 subprocess.run(['taskkill', '/PID', str(proc.pid), '/T', '/F'], stdout=output, stderr=output)
@@ -138,8 +143,6 @@ def launch(command, profile, logs, *, extra_env=None):
                 else:
                     proc.kill()
                 proc.wait(timeout=10)
-    if not (profile / 'data' / 'auto-manager.db').is_file():
-        raise RuntimeError(f'The launched app did not create its database; see {log}')
 
 
 def digest(path):
