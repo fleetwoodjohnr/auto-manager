@@ -6,7 +6,7 @@ import { useApp } from "../../store";
 import { useSettings } from "../../settings";
 import { Badge, Empty, Loaded } from "../../ui";
 import { ago, money } from "../../lib/format";
-import { useUpdateStore } from "../settings/updates";
+import { useUpdates } from "../settings/updates";
 import { t, tx } from "../../i18n";
 
 function Card({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -268,16 +268,14 @@ function StatusCard() {
   const go = useApp((s) => s.go);
   const info = useCmd<AppInfo>("app_info");
   const settings = useCmd<Settings>("settings_get");
-  const u = useUpdateStore();
+  const u = useUpdates();
   return (
     <Card title={t("Application and data")} action={<button className="btn link" onClick={() => go({ page: "settings", tab: "updates" })}>{t("Updates")}</button>}>
       <dl className="kv">
         <dt>{t("Version")}</dt>
         <dd>
-          {info.data?.version ?? "…"} {u.available && <Badge tone="info">{tx("{0} available", u.available.version)}</Badge>}
+          {info.data?.version ?? "…"} {u.update && <Badge tone="info">{tx("{0} available", u.update.version)}</Badge>}
         </dd>
-        <dt>{t("Last update check")}</dt>
-        <dd>{settings.data?.last_update_check ? ago(settings.data.last_update_check) : t("Never")}</dd>
         <dt>{t("Data")}</dt>
         <dd>{t("Stored on this computer")}{" "}{settings.data?.backup_auto ? t("· backed up daily") : <span style={{ color: "var(--warn)" }}>{t("· automatic backups are off")}{" "}<AlertTriangle size={13} aria-hidden /></span>}</dd>
       </dl>

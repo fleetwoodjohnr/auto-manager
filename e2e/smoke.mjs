@@ -24,7 +24,11 @@ try {
   }
   await nav(b, "Settings");
   await click(b, "Updates");
-  await waitText(b, "Check for Updates");
+  // The webview's updater call must be permitted: "Check now" reaches GitHub (up to date, or an
+  // error if offline) and never "not allowed".
+  await click(b, "Check now");
+  await b.waitUntil(async () => /You're up to date|Update failed|is available/.test(await bodyText(b)), { timeout: 30000 });
+  assert.ok(!/not allowed|isn't allowed/i.test(await bodyText(b)), "the updater plugin isn't permitted");
   console.log("smoke: every page rendered in both themes");
 
   // The other languages: every page renders, with its navigation translated.

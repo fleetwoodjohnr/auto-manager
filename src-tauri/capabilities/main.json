@@ -12,6 +12,7 @@
     "dialog:allow-confirm",
     "dialog:allow-message",
     "opener:allow-reveal-item-in-dir",
+    "updater:default",
     "process:allow-restart",
     {
       "allow": [
@@ -203,9 +204,7 @@
     "allow-backup-inspect",
     "allow-backup-restore",
     "allow-integrity-check",
-    "allow-update-check",
-    "allow-update-download",
-    "allow-update-install",
+    "allow-update-prepare",
     "allow-export-json",
     "allow-vin-check",
     "allow-decode-vin",

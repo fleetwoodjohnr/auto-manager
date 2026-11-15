@@ -165,4 +165,4 @@ The **Data Quality Center** lists things worth fixing:
   - **Move to another computer**: an encrypted bundle protected by your passphrase (a one-way full copy);
   - export inventory as CSV or Excel, or everything as JSON;
   - check the database.
-- **Updates**: current version, Check for Updates, release notes, download, restart and install, automatic checks and downloads, stable or beta channel. Updates never install without you.
+- **Updates**: works the same way as the other Simple Suite apps. With **Check for updates automatically** on, Auto Manager looks at start-up and once a day; when a new version is out, a notice appears in the corner with **Review update**. Here you see what's new, and **Install and restart** downloads it, checks its signature, backs up your data and restarts into the new version. **Check now** looks straight away. Nothing installs until you choose to, and not while you have unsaved changes.

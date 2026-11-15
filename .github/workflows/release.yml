@@ -1,7 +1,8 @@
 name: Release
-# Push a tag vX.Y.Z (stable) or vX.Y.Z-beta.N (beta channel). Builds every platform natively,
-# signs updater packages with TAURI_SIGNING_PRIVATE_KEY, verifies every signature, and publishes
-# a GitHub Release with latest.json for the in-app updater.
+# Push a tag vX.Y.Z. Builds every platform natively, signs updater packages with
+# TAURI_SIGNING_PRIVATE_KEY, installs, runs, updates and uninstalls every package
+# (scripts/package-smoke.py), verifies every signature, and publishes a GitHub Release with
+# latest.json for the in-app updater. Run it by hand (workflow_dispatch) to test without publishing.
 on:
   push:
     tags: ['v*']
@@ -45,13 +46,15 @@ jobs:
         with:
           key: ${{ matrix.target }}
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2 rpm
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2 rpm xvfb xauth
       - run: npm ci
       - run: node scripts/check-version.mjs
         env:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
       - run: npm test
       - run: cargo test --workspace --locked
+      # CI-only: the real updater, run against the installed package (never shipped).
+      - run: cargo build -p auto-manager --example update_rehearsal --locked
       - name: Build and sign
         shell: bash
         env:
@@ -73,16 +76,16 @@ jobs:
             extra=(--config "{\"bundle\":{\"windows\":{\"signCommand\":\"$WINDOWS_SIGN_COMMAND %1\"}}}")
           fi
           npx tauri build --target ${{ matrix.target }} "${extra[@]}" -- --locked
-      - name: Smoke test the built app
+      # Install every package the way a person would, run it, update it, uninstall it.
+      - name: Install, run and update the packages
         shell: bash
-        run: |
-          dir=$(mktemp -d)
-          case "$RUNNER_OS" in
-            Linux)   bin=target/${{ matrix.target }}/release/auto-manager ;;
-            Windows) bin=target/${{ matrix.target }}/release/auto-manager.exe ;;
-            macOS)   bin="$(ls -d target/${{ matrix.target }}/release/bundle/macos/*.app)/Contents/MacOS/auto-manager" ;;
-          esac
-          AUTO_MANAGER_DATA_DIR="$dir" "$bin" --self-test
+        run: python scripts/package-smoke.py --bundle target/${{ matrix.target }}/release/bundle --arch ${{ matrix.arch }} --logs target/smoke-logs --harness target/debug/examples/update_rehearsal${{ runner.os == 'Windows' && '.exe' || '' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-logs-${{ matrix.platform }}-${{ matrix.arch }}
+          path: target/smoke-logs
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform }}-${{ matrix.arch }}

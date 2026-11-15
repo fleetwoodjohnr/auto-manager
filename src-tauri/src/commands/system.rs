@@ -6,12 +6,7 @@ use auto_manager_core::settings::{self, Settings};
 use auto_manager_core::{AppError, AppResult, Core, db};
 use serde::Serialize;
 use std::path::PathBuf;
-use std::sync::Mutex;
-use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
-use tauri_plugin_updater::UpdaterExt;
-
-pub const REPO: &str = "fleetwoodjohnr/auto-manager";
 
 #[derive(Serialize)]
 pub struct AppInfo {
@@ -160,149 +155,12 @@ pub fn integrity_check(core: State<'_, Core>) -> AppResult<String> {
 
 // ---------------------------------------------------------------- updates
 
-#[derive(Default)]
-pub struct Updates {
-    found: Mutex<Option<tauri_plugin_updater::Update>>,
-    /// A verified download waiting for the person to choose "Restart and install".
-    bytes: Mutex<Option<Vec<u8>>>,
-}
-
-#[derive(Serialize)]
-pub struct UpdateInfo {
-    pub current: String,
-    pub version: String,
-    pub notes: Option<String>,
-    pub date: Option<String>,
-}
-
-#[derive(Serialize, Clone)]
-#[serde(tag = "event", rename_all = "snake_case")]
-pub enum UpdateProgress {
-    Started { total: Option<u64> },
-    Progress { downloaded: u64, total: Option<u64> },
-    Finished,
-}
-
-fn stable_endpoint() -> String {
-    format!("https://github.com/{REPO}/releases/latest/download/latest.json")
-}
-
-/// The newest release of any kind (stable or pre-release) that publishes a latest.json.
-async fn beta_endpoint() -> AppResult<String> {
-    #[derive(serde::Deserialize)]
-    struct Asset {
-        name: String,
-    }
-    #[derive(serde::Deserialize)]
-    struct Release {
-        tag_name: String,
-        draft: bool,
-        assets: Vec<Asset>,
-    }
-    let client = reqwest::Client::builder()
-        .user_agent(concat!("AutoManager/", env!("CARGO_PKG_VERSION")))
-        .timeout(std::time::Duration::from_secs(20))
-        .build()
-        .map_err(|e| AppError::Other(e.to_string()))?;
-    let releases: Vec<Release> = client
-        .get(format!("https://api.github.com/repos/{REPO}/releases?per_page=30"))
-        .header("Accept", "application/vnd.github+json")
-        .send()
-        .await
-        .and_then(|r| r.error_for_status())
-        .map_err(|e| AppError::Provider {
-            message: format!("Couldn't reach GitHub to check for beta releases ({e})."),
-            offline: e.is_connect() || e.is_timeout(),
-        })?
-        .json()
-        .await
-        .map_err(|_| AppError::Provider { message: "GitHub sent a release list Auto Manager couldn't read.".into(), offline: false })?;
-    let best = releases
-        .into_iter()
-        .filter(|r| !r.draft && r.assets.iter().any(|a| a.name == "latest.json"))
-        .filter_map(|r| semver::Version::parse(r.tag_name.trim_start_matches('v')).ok().map(|v| (v, r.tag_name)))
-        .max_by(|a, b| a.0.cmp(&b.0));
-    Ok(match best {
-        Some((_, tag)) => format!("https://github.com/{REPO}/releases/download/{tag}/latest.json"),
-        None => stable_endpoint(),
-    })
-}
-
-fn update_err(what: &str) -> impl Fn(tauri_plugin_updater::Error) -> AppError + '_ {
-    move |e| AppError::Provider { message: format!("{what}: {e}"), offline: false }
-}
-
-/// Check the chosen channel. The updater only offers versions newer than this one (no
-/// downgrades) and verifies every package against the public key built into the app.
-#[tauri::command]
-pub async fn update_check(
-    app: AppHandle,
-    core: State<'_, Core>,
-    updates: State<'_, Updates>,
-    channel: String,
-) -> AppResult<Option<UpdateInfo>> {
-    let endpoint = match std::env::var("AUTO_MANAGER_UPDATE_ENDPOINT").ok().filter(|e| !e.is_empty()) {
-        Some(e) => e,
-        None if channel == "beta" => beta_endpoint().await?,
-        None => stable_endpoint(),
-    };
-    let url = url::Url::parse(&endpoint).map_err(|e| AppError::Other(format!("Bad update address: {e}")))?;
-    let err = update_err("Couldn't check for updates");
-    let found = app.updater_builder().endpoints(vec![url]).map_err(&err)?.build().map_err(&err)?.check().await.map_err(&err)?;
-    core.tx(|c| {
-        let mut s = settings::load(c);
-        s.last_update_check = Some(db::now_utc());
-        settings::save(c, &s).map(|_| ())
-    })?;
-    let info = found.as_ref().map(|u| UpdateInfo {
-        current: u.current_version.clone(),
-        version: u.version.clone(),
-        notes: u.body.clone(),
-        date: u.date.map(|d| d.to_string()),
-    });
-    *updates.found.lock().unwrap_or_else(|e| e.into_inner()) = found;
-    *updates.bytes.lock().unwrap_or_else(|e| e.into_inner()) = None;
-    Ok(info)
-}
-
-/// Download the update found by `update_check` and verify its signature. Nothing is installed.
-#[tauri::command]
-pub async fn update_download(updates: State<'_, Updates>, on_progress: Channel<UpdateProgress>) -> AppResult<()> {
-    let update =
-        updates.found.lock().unwrap_or_else(|e| e.into_inner()).clone().ok_or_else(|| AppError::msg("Check for updates first."))?;
-    let mut downloaded: u64 = 0;
-    let mut started = false;
-    let bytes = update
-        .download(
-            |chunk, total| {
-                if !started {
-                    started = true;
-                    let _ = on_progress.send(UpdateProgress::Started { total });
-                }
-                downloaded += chunk as u64;
-                let _ = on_progress.send(UpdateProgress::Progress { downloaded, total });
-            },
-            || {
-                let _ = on_progress.send(UpdateProgress::Finished);
-            },
-        )
-        .await
-        .map_err(update_err("The update couldn't be downloaded or failed verification. Nothing was changed"))?;
-    *updates.bytes.lock().unwrap_or_else(|e| e.into_inner()) = Some(bytes);
-    Ok(())
-}
-
-/// Back up the data, then install the downloaded update. The UI relaunches afterwards (on
-/// Windows the installer closes the app itself).
-#[tauri::command]
-pub async fn update_install(core: State<'_, Core>, updates: State<'_, Updates>) -> AppResult<()> {
-    let update =
-        updates.found.lock().unwrap_or_else(|e| e.into_inner()).clone().ok_or_else(|| AppError::msg("Check for updates first."))?;
-    let bytes =
-        updates.bytes.lock().unwrap_or_else(|e| e.into_inner()).take().ok_or_else(|| AppError::msg("Download the update first."))?;
+/// Back up the data before the updater installs (the webview checks, downloads and verifies
+/// through the updater plugin, as in the other Simple Suite apps).
+#[tauri::command(async)]
+pub fn update_prepare(core: State<'_, Core>) -> AppResult<()> {
     let paths = core.paths.clone();
-    core.read(|c| backup::create(c, &paths, "pre-update").map(|_| ()))?;
-    update.install(bytes).map_err(update_err("The update couldn't be installed. Nothing was changed"))
+    core.read(|c| backup::create(c, &paths, "pre-update").map(|_| ()))
 }
 
 #[tauri::command(async)]

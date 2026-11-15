@@ -28,11 +28,11 @@ default_min_stock: number,
 /**
  * "code128" or "qr"
  */
-label_symbology: string, update_check: boolean, update_download: boolean, 
+label_symbology: string, 
 /**
- * "stable" or "beta"
+ * Check GitHub for updates at start-up and daily. Installing always asks.
  */
-update_channel: string, last_update_check: string | null, backup_auto: boolean, 
+update_check: boolean, backup_auto: boolean, 
 /**
  * Days before a saved provider answer is refreshed
  */

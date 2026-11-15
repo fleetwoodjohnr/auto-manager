@@ -393,6 +393,8 @@ kbd { display: inline-flex; align-items: center; height: 20px; min-width: 20px; 
 .menu .sep { height: 1px; background: var(--border); margin: 4px 2px; }
 
 /* Toasts: bottom centre, as in the Simple Office apps. */
+.update-notice { position: fixed; right: 16px; bottom: 16px; z-index: 150; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--elev); color: var(--text); box-shadow: var(--shadow-pop); max-width: min(440px, calc(100vw - 32px)); }
+.update-notice p { margin: 0; }
 .toasts { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast { pointer-events: auto; display: flex; align-items: center; gap: 12px; border-radius: 12px; background: #1c1c22; color: #fff; padding: 9px 10px 9px 16px; font-size: 13px; box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.45); max-width: min(560px, 92vw); animation: dialogIn 0.16s var(--ease); }
 :root[data-theme="dark"] .toast { background: #2a2a30; }

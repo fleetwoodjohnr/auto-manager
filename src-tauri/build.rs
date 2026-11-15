@@ -17,6 +17,7 @@ const CORE_PERMISSIONS: &[&str] = &[
     "dialog:allow-confirm",
     "dialog:allow-message",
     "opener:allow-reveal-item-in-dir",
+    "updater:default",
     "process:allow-restart",
 ];
 
@@ -81,4 +82,13 @@ fn main() {
 
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(names)))
         .expect("failed to run tauri-build");
+
+    // Tauri links its Windows manifest only into binaries. The CI updater rehearsal example
+    // (examples/update_rehearsal.rs) needs the same Common Controls v6 activation, or Windows
+    // can't resolve TaskDialogIndirect when it starts. Examples only; the app is unchanged.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        let resource = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR")).join("resource.lib");
+        assert!(resource.is_file(), "tauri-build did not generate the Windows application resource");
+        println!("cargo:rustc-link-arg-examples={}", resource.display());
+    }
 }

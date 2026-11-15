@@ -28,11 +28,8 @@ pub struct Settings {
     pub default_min_stock: i64,
     /// "code128" or "qr"
     pub label_symbology: String,
+    /// Check GitHub for updates at start-up and daily. Installing always asks.
     pub update_check: bool,
-    pub update_download: bool,
-    /// "stable" or "beta"
-    pub update_channel: String,
-    pub last_update_check: Option<String>,
     pub backup_auto: bool,
     /// Days before a saved provider answer is refreshed
     pub provider_refresh_days: i64,
@@ -53,9 +50,6 @@ impl Default for Settings {
             default_min_stock: 0,
             label_symbology: "code128".into(),
             update_check: true,
-            update_download: false,
-            update_channel: "stable".into(),
-            last_update_check: None,
             backup_auto: true,
             provider_refresh_days: 30,
             dashboard_widgets: WIDGETS.iter().map(|w| w.to_string()).collect(),
@@ -84,7 +78,6 @@ pub fn save(conn: &Connection, s: &Settings) -> AppResult<Settings> {
     one_of("units", &s.units, &["imperial", "metric"])?;
     one_of("valuation_method", &s.valuation_method, &["average", "standard"])?;
     one_of("label_symbology", &s.label_symbology, &["code128", "qr"])?;
-    one_of("update_channel", &s.update_channel, &["stable", "beta"])?;
     one_of(
         "landing_page",
         &s.landing_page,

@@ -313,8 +313,6 @@ dependencies = [
  "auto-manager-core",
  "auto-manager-obd",
  "chrono",
- "reqwest",
- "semver",
  "serde",
  "serde_json",
  "tauri",
@@ -325,7 +323,6 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tracing",
- "url",
  "webkit2gtk",
 ]
 

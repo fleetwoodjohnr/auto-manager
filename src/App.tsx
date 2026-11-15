@@ -1,6 +1,5 @@
 import { useEffect, useState, type ComponentType } from "react";
 import {
-  ArrowUpCircle,
   BarChart3,
   BookOpen,
   Boxes,
@@ -22,7 +21,8 @@ import type { AppInfo } from "./api/types";
 import { currentTheme } from "./theme";
 import { Logo, Toasts } from "./ui";
 import GlobalSearch from "./features/shell/GlobalSearch";
-import { useUpdates } from "./features/settings/updates";
+import { scheduleUpdateChecks, useUpdates } from "./features/settings/updates";
+import { UpdateNotice } from "./features/settings/UpdateNotice";
 import Dashboard from "./features/dashboard/Dashboard";
 import Lookup from "./features/lookup/Lookup";
 import Garage from "./features/vehicles/Garage";
@@ -85,7 +85,9 @@ export default function App() {
   const { route, go } = useApp();
   const { settings, save } = useSettings();
   const info = useCmd<AppInfo>("app_info");
-  const updates = useUpdates(info.data, settings);
+  const autoCheck = !!info.data && !info.data.debug && !!settings?.update_check;
+  // Development builds never check: they aren't installed and would only reach GitHub.
+  useEffect(() => (autoCheck ? scheduleUpdateChecks(() => void useUpdates.getState().checkNow()) : undefined), [autoCheck]);
   useAutoSync();
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -149,11 +151,6 @@ export default function App() {
         <span className="where">{place.label}</span>
         <GlobalSearch />
         <div className="tools">
-          {updates.available && (
-            <button className="pill" onClick={() => go({ page: "settings", tab: "updates" })}>
-              <ArrowUpCircle size={14} aria-hidden /> {updates.ready ? t("Restart to update") : t("Version {0} available", updates.available.version)}
-            </button>
-          )}
           <button className="icon-btn" aria-label={dark ? t("Use the light theme") : t("Use the dark theme")} title={dark ? t("Light theme") : t("Dark theme")} onClick={() => save({ theme: dark ? "light" : "dark" })}>
             {dark ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}
           </button>
@@ -178,6 +175,7 @@ export default function App() {
           <Current key={`${route.page}:${route.id ?? ""}`} />
         </main>
       </div>
+      <UpdateNotice onReview={() => go({ page: "settings", tab: "updates" })} />
       <Toasts />
     </div>
   );

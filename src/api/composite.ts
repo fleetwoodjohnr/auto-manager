@@ -51,15 +51,3 @@ export interface Source {
   enabled: boolean;
   records: number;
 }
-
-export interface UpdateInfo {
-  current: string;
-  version: string;
-  notes: string | null;
-  date: string | null;
-}
-
-export type UpdateProgress =
-  | { event: "started"; total: number | null }
-  | { event: "progress"; downloaded: number; total: number | null }
-  | { event: "finished" };

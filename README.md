@@ -32,7 +32,7 @@ It's part of the Simple Suite family (Simple Cell, Simple Docs, Simple Viz, Simp
 | Attachments | Photos and PDFs (receipts, invoices, diagrams) on vehicles, parts, inventory items and jobs |
 | Data | Automatic daily backups, verified restore, **two-way encrypted sync between computers through a shared folder**, full JSON export |
 | Languages | English, Spanish and French |
-| Updates | Signed updates from GitHub Releases, stable or beta channel, checks and downloads only with your permission |
+| Updates | Signed updates from GitHub Releases, the same way as the other Simple Suite apps: a notice when a new version is out, then **Install and restart** (your data is backed up first). Nothing installs until you choose to |
 
 The full list of what's done and what isn't, and how each part was verified, is in **[docs/LIMITATIONS.md](docs/LIMITATIONS.md)**.
 
@@ -68,7 +68,7 @@ The folder holds `auto-manager.db` (SQLite), `documents/` (imported PDFs), `atta
 - [Data providers](docs/PROVIDERS.md): what each source supplies, its terms, and how to add one
 - [Architecture](docs/ARCHITECTURE.md) and [database](docs/DATABASE.md)
 - [Development](docs/DEVELOPMENT.md): build, test, the end-to-end suite
-- [Releasing](docs/RELEASING.md): signing keys, GitHub secrets, channels, and update behaviour per package type
+- [Releasing](docs/RELEASING.md): signing keys, GitHub secrets, installer tests, and update behaviour per package type
 - [Security](SECURITY.md)
 - [Feature completion and limitations](docs/LIMITATIONS.md), and the [test report](docs/TEST_REPORT.md)
 

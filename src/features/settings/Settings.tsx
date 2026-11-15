@@ -8,8 +8,8 @@ import { call, errorMessage } from "../../api/ipc";
 import type { AppInfo, BackupInfo, CacheStats, Location, Profile, Settings as S, Source } from "../../api/types";
 import { useApp, toast } from "../../store";
 import { Badge, ExtLink, Loaded, PageHead, ProgressBar, Spinner, Tabs, useConfirm } from "../../ui";
-import { bytes, dateTime, ago } from "../../lib/format";
-import { useUpdateStore } from "./updates";
+import { bytes, dateTime } from "../../lib/format";
+import { useUpdates } from "./updates";
 import { FolderSync } from "./FolderSync";
 import { t, tx, lang, LANGUAGES, setLanguage, type Lang } from "../../i18n";
 
@@ -540,8 +540,9 @@ function DataSettings({ s, save }: Props) {
 
 function Updates({ s, save }: Props) {
   const info = useCmd<AppInfo>("app_info");
-  const u = useUpdateStore();
+  const u = useUpdates();
   const managed = info.data?.os === "linux" && !info.data.bundle;
+  const busy = u.state === "downloading" || u.state === "installing";
   return (
     <div className="stack">
       <section className="card">
@@ -551,69 +552,48 @@ function Updates({ s, save }: Props) {
           <dd>
             {info.data?.version ?? "…"} {info.data?.debug && <Badge tone="warn">{t("development build")}</Badge>}
           </dd>
-          <dt>{t("Latest")}</dt>
-          <dd>
-            {u.available ? `${u.available.version}` : u.checked && !u.error ? t("You're up to date") : "—"}
-            {s.last_update_check && <span className="muted">{" "}{tx("· checked {0}", ago(s.last_update_check))}</span>}
-          </dd>
           <dt>{t("Installed as")}</dt>
           <dd>{info.data ? `${info.data.bundle ?? "unpackaged build"} · ${info.data.os} ${info.data.arch}` : "…"}</dd>
         </dl>
         {managed && (
           <div className="notice info mt-2">{t("This copy wasn't installed from an Auto Manager package (for example a Flatpak or a build from source), so it is updated by the way it was installed, not from here.")}</div>
         )}
-        <div className="row mt-2">
-          <button className="btn" onClick={() => u.check(s.update_channel)} disabled={u.checking || u.downloading}>
-            {u.checking ? <Spinner /> : <RefreshCw size={16} aria-hidden />} {u.checking ? t("Checking…") : t("Check for Updates")}
-          </button>
-        </div>
-        {u.error && <div className="notice bad mt-2">{u.error}</div>}
-        {u.available && (
-          <div className="stack mt-2">
-            <details open>
-              <summary>{tx("What's new in {0}", u.available.version)}</summary>
-              <pre className="notes mt-2">{u.available.notes || t("No release notes.")}</pre>
-            </details>
-            {!u.ready && (
-              <button className="btn primary" onClick={u.download} disabled={u.downloading}>
-                {u.downloading ? <Spinner /> : <Download size={16} aria-hidden />}{" "}{t("Download update")}</button>
-            )}
-            {u.progress && !u.ready && (
-              <div>
-                <ProgressBar value={u.progress.downloaded} max={u.progress.total ?? 0} label={t("Download progress")} />
-                <p className="small muted">
-                  {bytes(u.progress.downloaded)}
-                  {u.progress.total ? t(" of {0}", bytes(u.progress.total)) : ""}
-                </p>
-              </div>
-            )}
-            {u.ready && (
-              <div className="notice ok spread">
-                <span>{t("The update is downloaded and its signature checked. Your data will be backed up before it installs.")}</span>
-                <button className="btn primary" onClick={u.installAndRestart}>{t("Restart and install")}</button>
-              </div>
-            )}
+        <Setting
+          label={u.update ? t("Version {0} is available", u.update.version) : u.state === "none" ? t("You're up to date") : t("Updates")}
+          hint={t("Updates are installed only if their signature matches Auto Manager's release key. Your data is backed up first, then the app restarts.")}
+        >
+          {u.update ? (
+            <button className="btn primary" disabled={busy || u.state === "checking"} onClick={() => void u.install()}>
+              {busy ? <Spinner /> : <Download size={16} aria-hidden />}{" "}
+              {u.state === "downloading" ? t("Downloading…") : u.state === "installing" ? t("Installing…") : t("Install and restart")}
+            </button>
+          ) : (
+            <button className="btn" disabled={u.state === "checking"} onClick={() => void u.checkNow()}>
+              {u.state === "checking" ? <Spinner /> : <RefreshCw size={16} aria-hidden />}{" "}{u.state === "checking" ? t("Checking…") : t("Check now")}
+            </button>
+          )}
+        </Setting>
+        {u.state === "downloading" && (
+          <div role="status">
+            <ProgressBar value={u.downloaded} max={u.total ?? 0} label={t("Download progress")} />
+            <p className="small muted">
+              {bytes(u.downloaded)}
+              {u.total ? t(" of {0}", bytes(u.total)) : ""}
+            </p>
           </div>
         )}
+        {u.update?.body && (
+          <details open className="mt-2">
+            <summary>{tx("What's new in {0}", u.update.version)}</summary>
+            <pre className="notes mt-2">{u.update.body}</pre>
+          </details>
+        )}
+        {u.state === "error" && <div className="notice bad mt-2">{t("Update failed: {0}", u.error ?? "")}</div>}
       </section>
       <section className="card">
         <h2>{t("Preferences")}</h2>
-        <Setting label={t("Check for updates when Auto Manager starts")} hint={t("At most once a day.")}>
+        <Setting label={t("Check for updates automatically")} hint={t("At start-up and once a day, from GitHub. Nothing installs until you choose to.")}>
           <Switch checked={s.update_check} onChange={(update_check) => save({ update_check })} label={t("Check for updates automatically")} />
-        </Setting>
-        <Setting label={t("Download updates automatically")} hint={t("Installing always waits for you.")}>
-          <Switch checked={s.update_download} disabled={!s.update_check} onChange={(update_download) => save({ update_download })} label={t("Download updates automatically")} />
-        </Setting>
-        <Setting label={t("Release channel")} hint={t("Beta gets new features first and may have rough edges. Switching back to stable never installs an older version.")}>
-          <Segmented
-            name={t("Release channel")}
-            value={s.update_channel as "stable" | "beta"}
-            onChange={(update_channel) => save({ update_channel })}
-            options={[
-              { v: "stable", label: t("Stable") },
-              { v: "beta", label: t("Beta") },
-            ]}
-          />
         </Setting>
         <Setting label={t("Release notes and downloads")}>
           <ExtLink href="https://github.com/fleetwoodjohnr/auto-manager/releases">{t("All releases")}</ExtLink>
