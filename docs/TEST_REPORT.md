@@ -112,7 +112,14 @@ Picture reading takes about 1.2 s for a VIN photo and 1.9 s for a full-HD camera
 | `e2e/quickbooks.mjs` (real app) | Passed: an export imported (2 stock items with QuickBooks prices and stock, the service skipped) and imported again (price updated, no copies); then QuickBooks Online against a stand-in for Intuit — Connect → the sign-in answer returned to the app's listener → review (3 to add, the service and the category skipped) → apply → price changed in "QuickBooks" → Bring in again → updated → Disconnect (revoked at the stand-in, records kept); axe: no violations on the QuickBooks screen, the sign-in dialog and the review |
 | Return page (`site/quickbooks/index.html`) | Forwards only a `state` of the app's exact shape to `127.0.0.1` on ports 1024–65535; anything else stays on the page (checked with crafted values) |
 
-Not run here: QuickBooks Online against Intuit's servers (needs an Intuit developer app and its keys), and real QuickBooks export files from a company.
+Intuit app keys entered in Settings (2026-11-15):
+
+| Check | Result |
+|---|---|
+| `cargo test` | Keys saved, found (Settings source, environment kept) and removed; blank, spaced or over-long keys refused with nothing stored. By hand, against this desktop's real keyring (GNOME Keyring through Secret Service): saved, read back, removed, nothing left (`secret-tool search`) |
+| `e2e/quickbooks.mjs` (real app, no keys in the environment) | The form showed the redirect address the app uses; a secret with a space refused; the keys saved; the secret absent from the page and from what the window receives; the stand-in for Intuit checked the token request carried exactly the keys typed; then the whole connection flow above; after Disconnect, Remove keys brought the form back; axe: no violations on the form |
+
+Not run here: QuickBooks Online against Intuit's servers (needs an Intuit developer app and its keys, which can now be entered in Settings), and real QuickBooks export files from a company.
 
 ## Installers on every platform (release workflow, 2026-11-14)
 

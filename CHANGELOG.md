@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org). The release workflow publishes the section for each version as its release notes and in-app update notes.
 
-## [Unreleased]
+## [0.2.0] - 2026-11-15
 
 - **QuickBooks import.** Settings → QuickBooks imports a QuickBooks Online or Desktop export (products and services, customers, vendors). You see what will be added, updated or skipped before anything is saved. Stock items get their QuickBooks price, cost, quantity, reorder point and preferred vendor. Importing again later updates the same records instead of adding copies; stock and cost only follow QuickBooks if you tick it. QuickBooks itself is never changed.
 - **QuickBooks Online connection.** Enter your Intuit developer app's keys in Settings → QuickBooks (the screen walks through creating the app and shows the redirect URI to add), then Connect to QuickBooks: sign in in your browser, pick the company, and **Bring in from QuickBooks…** reads the same data straight from QuickBooks Online with the same review. Development keys reach Intuit's sandbox companies; Production keys your real company. The keys and the sign-in are kept in your system's keyring.

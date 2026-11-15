@@ -330,7 +330,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "auto-manager"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "auto-manager-core",
  "auto-manager-obd",
@@ -351,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "auto-manager-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "apple-native-keyring-store",
  "argon2",
@@ -396,7 +396,7 @@ dependencies = [
 
 [[package]]
 name = "auto-manager-obd"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serialport",

@@ -1,6 +1,6 @@
 # Feature completion and limitations
 
-This report covers version 0.1.1 as of 2026-11-14. Status: **Done** works and was verified as shown; **Partial** works with the stated gap; **Not included** is missing, with the reason. Verification codes:
+This report covers version 0.2.0 as of 2026-11-15. Status: **Done** works and was verified as shown; **Partial** works with the stated gap; **Not included** is missing, with the reason. Verification codes:
 
 - **U**: unit and integration tests in `cargo test`.
 - **E2E**: the real app driven through WebDriver (`e2e/`).
