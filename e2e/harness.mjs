@@ -1,7 +1,7 @@
 // Drives the real desktop binary through tauri-driver + WebKitWebDriver on a private Xvfb
 // display (the pattern from salon-management). Every run uses a fresh data folder.
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readlinkSync, realpathSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,32 @@ export function stopDisplay() {
 }
 
 /** Start the app. `env` adds variables, e.g. provider base URLs pointing at a fixture server. */
+/** Only one copy of the app may run (single-instance): a relaunch before the last copy has
+ *  exited hands over to it and quits. Wait for copies of `bin` to exit; stop them after 10 s. */
+async function waitExited(bin) {
+  let real;
+  try {
+    real = realpathSync(bin);
+  } catch {
+    return;
+  }
+  const running = () =>
+    readdirSync("/proc")
+      .filter((p) => /^\d+$/.test(p))
+      .filter((p) => {
+        try {
+          return readlinkSync(`/proc/${p}/exe`) === real;
+        } catch {
+          return false;
+        }
+      });
+  const deadline = Date.now() + 10000;
+  while (running().length) {
+    if (Date.now() > deadline) running().forEach((p) => process.kill(Number(p), "SIGKILL"));
+    await sleep(100);
+  }
+}
+
 export async function launch({ dataDir, port = 4544, bin = BIN, env = {} }) {
   await startDisplay();
   mkdirSync(dataDir, { recursive: true });
@@ -49,7 +75,7 @@ export async function launch({ dataDir, port = 4544, bin = BIN, env = {} }) {
     async close() {
       await browser.deleteSession().catch(() => {});
       driver.kill();
-      await sleep(500);
+      await waitExited(bin);
     },
   };
 }
