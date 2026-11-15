@@ -81,7 +81,10 @@ AUTO_MANAGER_DATA_DIR=$(mktemp -d) target/release/auto-manager --self-test
 | `AUTO_MANAGER_LOG` | Log filter, e.g. `debug` or `auto_manager_core=trace` (default `info`) |
 | `AUTO_MANAGER_VPIC_BASE`, `AUTO_MANAGER_NHTSA_BASE`, `AUTO_MANAGER_NHTSA_STATIC_BASE`, `AUTO_MANAGER_FUELECONOMY_BASE` | Provider base URLs (tests) |
 | `AUTO_MANAGER_ALLOW_HTTP_LOCALHOST` | Allow plain HTTP to 127.0.0.1 (tests) |
-| `AUTO_MANAGER_UPDATE_ENDPOINT` | Update manifest URL instead of GitHub (update tests) |
+| `AUTO_MANAGER_QBO_CLIENT_ID`, `AUTO_MANAGER_QBO_CLIENT_SECRET`, `AUTO_MANAGER_QBO_ENV` | The Intuit app's keys and `sandbox` or `production`. Read at run time if set, otherwise built in at compile time (release builds). Use your Intuit **development** keys for the sandbox |
+| `AUTO_MANAGER_QBO_AUTH_URL`, `_TOKEN_URL`, `_REVOKE_URL`, `_API_BASE`, `_REDIRECT` | Intuit's addresses (tests; `_REDIRECT` may contain `{port}`) |
+| `AUTO_MANAGER_QBO_NO_BROWSER` | Don't open the browser for the QuickBooks sign-in (E2E answers it) |
+| `AUTO_MANAGER_SECRET_STORE=memory` | Keep secrets in memory instead of the OS keyring (tests, machines without one) |
 | `AUTO_MANAGER_LIVE` | Enable the live provider tests |
 | `AUTO_MANAGER_MOCK_CAMERA` | Use WebKitGTK's mock camera (Linux E2E) |
 

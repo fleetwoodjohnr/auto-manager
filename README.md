@@ -30,6 +30,7 @@ It's part of the Simple Suite family (Simple Cell, Simple Docs, Simple Viz, Simp
 | Purchasing | Suppliers, supplier part numbers and prices, price comparison, a reorder assistant, purchase orders, receiving, backorders, cost history |
 | Reports | Inventory value, stock status, movement, usage, slow movers, turnover, revenue and margins, estimate conversion, supplier spending, vehicle history and cost. Print to PDF, CSV or Excel. Data Quality Center |
 | Attachments | Photos and PDFs (receipts, invoices, diagrams) on vehicles, parts, inventory items and jobs |
+| QuickBooks | Bring in products and services, prices, stock, customers and vendors from a QuickBooks Online or Desktop export, or by connecting to QuickBooks Online. Previewed row by row; importing again updates the same records. QuickBooks is never changed |
 | Data | Automatic daily backups, verified restore, **two-way encrypted sync between computers through a shared folder**, full JSON export |
 | Languages | English, Spanish and French |
 | Updates | Signed updates from GitHub Releases, the same way as the other Simple Suite apps: a notice when a new version is out, then **Install and restart** (your data is backed up first). Nothing installs until you choose to |

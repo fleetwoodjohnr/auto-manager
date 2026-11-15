@@ -28,6 +28,7 @@ serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 chrono.workspace = true
+tokio = { version = "1", features = ["sync"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Only to switch on camera access for VIN scanning (the same version Tauri uses).

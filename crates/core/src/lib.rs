@@ -35,6 +35,7 @@ pub mod quickbooks;
 pub mod reports;
 pub mod scan;
 pub mod search;
+pub mod secrets;
 pub mod settings;
 pub mod specs;
 pub mod state;

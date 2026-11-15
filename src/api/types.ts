@@ -15,6 +15,7 @@ export type { CanadaOptions } from "./bindings/CanadaOptions";
 export type { CanadaRow } from "./bindings/CanadaRow";
 export type { Category } from "./bindings/Category";
 export type { Change } from "./bindings/Change";
+export type { Connection } from "./bindings/Connection";
 export type { CostPoint } from "./bindings/CostPoint";
 export type { CountLine } from "./bindings/CountLine";
 export type { CountResult } from "./bindings/CountResult";

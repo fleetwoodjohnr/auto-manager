@@ -17,6 +17,13 @@
    | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | if the key has one | Its password |
    | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | optional | Developer ID certificate (base64 .p12) and notarization credentials. Without them macOS builds are ad-hoc signed and users must allow the app in Privacy & Security |
    | `WINDOWS_SIGN_COMMAND` | optional | A signing command that takes the file path as `%1` (e.g. Azure Trusted Signing or `signtool`). Without it Windows shows SmartScreen on first run |
+   | `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET` | optional | The Intuit app's **production** keys, built into release builds for the QuickBooks Online connection. Without them the app offers QuickBooks export import only |
+
+4. **QuickBooks Online** (only for the live connection):
+   - Create an app at [developer.intuit.com](https://developer.intuit.com) with the Accounting scope.
+   - Under Keys & credentials → Redirect URIs, add `https://fleetwoodjohnr.github.io/auto-manager/quickbooks/` for both Development and Production. That page (`site/quickbooks/index.html`, published by `.github/workflows/pages.yml`) hands Intuit's answer to the app on the person's computer. Turn on GitHub Pages for the repository (Settings → Pages → Source: GitHub Actions).
+   - Try it with the **development** keys against your sandbox company (`AUTO_MANAGER_QBO_CLIENT_ID`/`_SECRET` in the environment, see DEVELOPMENT.md).
+   - Complete Intuit's app assessment to get **production** keys, then add them as the secrets above. The next release can connect to real companies.
 
 ## Cutting a release
 

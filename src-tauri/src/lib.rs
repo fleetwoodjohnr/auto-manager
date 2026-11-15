@@ -64,6 +64,7 @@ pub fn run() {
             tracing::info!(version = env!("CARGO_PKG_VERSION"), "starting");
             let core = Core::open(paths).unwrap_or_else(|e| fatal("cannot open the database", e));
             app.manage(core);
+            app.manage(commands::quickbooks::Qbo::default());
             // Text-recognition models for reading VINs from photos (bundled resources; in
             // development, straight from src-tauri/resources).
             let ocr = app.path().resource_dir().map(|d| d.join("ocr")).ok().filter(|d| d.join("text-recognition.onnx").exists());

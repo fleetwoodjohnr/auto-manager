@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, Link2, RefreshCw, Unlink } from "lucide-react";
 import { call, errorMessage } from "../../api/ipc";
-import { useRefresh } from "../../api/queries";
-import type { QbOptions, QbPreview, QbRow, QbSummary } from "../../api/types";
+import { useCmd, useRefresh } from "../../api/queries";
+import type { Connection, QbOptions, QbPreview, QbRow, QbSummary } from "../../api/types";
+import { ago } from "../../lib/format";
 import { toast } from "../../store";
-import { Badge, ErrorNote, Modal, Spinner } from "../../ui";
+import { Badge, ErrorNote, Modal, Spinner, useConfirm } from "../../ui";
 import { t, tm, tx } from "../../i18n";
 
 const DEFAULTS: QbOptions = { use_prices: true, non_inventory: false, apply_stock: false, apply_cost: false };
@@ -182,9 +183,141 @@ function ImportExport() {
   );
 }
 
+type Status = { available: boolean; environment: string | null; connection: Connection | null; signing_in: boolean };
+
+function SignInDialog({ onClose }: { onClose: () => void }) {
+  const [pasted, setPasted] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const finish = async () => {
+    setError(null);
+    try {
+      await call("quickbooks_finish", { url: pasted });
+    } catch (e) {
+      setError(e);
+    }
+  };
+  return (
+    <Modal
+      open
+      title={t("Connect to QuickBooks")}
+      onClose={onClose}
+      footer={<button className="btn" onClick={onClose}>{t("Cancel")}</button>}
+    >
+      <div className="stack">
+        <p>
+          <Spinner />{" "}{t("Finish signing in to QuickBooks in your browser, then choose the company to connect.")}</p>
+        <p className="small muted">{t("If your browser shows a page asking you to paste its address, copy that address here:")}</p>
+        <div className="row">
+          <input className="grow" aria-label={t("Address from the browser")} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="https://…" />
+          <button className="btn" onClick={finish} disabled={!pasted.trim()}>{t("Continue")}</button>
+        </div>
+        {error != null && <ErrorNote error={error} />}
+      </div>
+    </Modal>
+  );
+}
+
+function Online() {
+  const status = useCmd<Status>("quickbooks_status");
+  const { ask, dialog } = useConfirm();
+  const [signingIn, setSigningIn] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const first = useRef(true);
+  const s = status.data;
+  const connect = async () => {
+    setError(null);
+    setSigningIn(true);
+    try {
+      const c = await call<Connection>("quickbooks_connect");
+      toast(t("Connected to {0}", c.company));
+      await status.refetch();
+      first.current = true;
+      setReviewing(true);
+    } catch (e) {
+      if (!/cancelled/.test(errorMessage(e))) setError(e);
+    } finally {
+      setSigningIn(false);
+    }
+  };
+  const cancel = async () => {
+    await call("quickbooks_cancel");
+    setSigningIn(false);
+  };
+  const disconnect = async () => {
+    if (!(await ask(t("Disconnect QuickBooks?"), t("Auto Manager stops reading from this company. What was imported stays, and connecting again later updates the same records."), t("Disconnect")))) return;
+    try {
+      const note = await call<string | null>("quickbooks_disconnect");
+      if (note) toast(note, { tone: "bad" });
+      await status.refetch();
+    } catch (e) {
+      setError(e);
+    }
+  };
+  if (!s) return <Spinner label={t("Loading")} />;
+  const c = s.connection;
+  return (
+    <section className="card">
+      <h2>{t("QuickBooks Online")}</h2>
+      {!s.available ? (
+        <p className="muted">{t("Connecting straight to QuickBooks Online isn't available in this version yet. Until it is, import an export below: it brings in the same products, prices, stock, customers and vendors.")}</p>
+      ) : c ? (
+        <>
+          <p>
+            {tx("Connected to {0}", <strong key="c">{c.company}</strong>)}{" "}
+            {c.environment === "sandbox" && <Badge tone="warn">{t("sandbox")}</Badge>}
+          </p>
+          <p className="small muted">{c.last_refresh ? tx("Last brought in {0}.", ago(c.last_refresh)) : t("Nothing brought in yet.")}{" "}{t("Auto Manager only reads from QuickBooks.")}</p>
+          <div className="row mt-2">
+            <button
+              className="btn primary"
+              onClick={() => {
+                first.current = true;
+                setReviewing(true);
+              }}
+            >
+              <RefreshCw size={16} aria-hidden />{" "}{t("Bring in from QuickBooks…")}</button>
+            <button className="btn" onClick={disconnect}>
+              <Unlink size={16} aria-hidden />{" "}{t("Disconnect")}</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="muted">{t("Sign in with your QuickBooks account and choose the company. Auto Manager then reads your products and services, prices, stock, customers and vendors, and shows what it will bring in before saving anything. It never changes QuickBooks.")}</p>
+          <div className="row mt-2">
+            <button className="btn primary" onClick={connect} disabled={signingIn}>
+              <Link2 size={16} aria-hidden />{" "}{t("Connect to QuickBooks")}</button>
+            {s.environment === "sandbox" && <Badge tone="warn">{t("sandbox")}</Badge>}
+          </div>
+        </>
+      )}
+      {error != null && <div className="mt-2"><ErrorNote error={error} /></div>}
+      {signingIn && <SignInDialog onClose={cancel} />}
+      {reviewing && c && (
+        <QbReview
+          title={t("Bring in from {0}", c.company)}
+          load={(options) => {
+            const reload = first.current;
+            first.current = false;
+            return call<QbPreview>("quickbooks_preview", { options, reload });
+          }}
+          apply={async (options) => {
+            const r = await call<QbSummary>("quickbooks_apply", { options });
+            await status.refetch();
+            return r;
+          }}
+          onClose={() => setReviewing(false)}
+        />
+      )}
+      {dialog}
+    </section>
+  );
+}
+
 export function QuickBooks() {
   return (
     <div className="stack">
+      <Online />
       <ImportExport />
     </div>
   );

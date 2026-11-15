@@ -12,6 +12,26 @@ const MIN_INTERVAL: Duration = Duration::from_millis(250);
 const MAX_RETRY_WAIT: Duration = Duration::from_secs(10);
 const MAX_BODY: usize = 20 * 1024 * 1024;
 
+#[derive(Clone, Copy)]
+pub enum Body<'a> {
+    None,
+    Form(&'a [(&'a str, &'a str)]),
+    Json(&'a serde_json::Value),
+}
+
+/// Credentials for one request. Never logged.
+#[derive(Clone, Copy)]
+pub enum Auth<'a> {
+    None,
+    Basic(&'a str, &'a str),
+    Bearer(&'a str),
+}
+
+pub struct Reply {
+    pub status: u16,
+    pub body: Vec<u8>,
+}
+
 pub struct Http {
     client: reqwest::Client,
     last: Mutex<HashMap<String, Instant>>,
@@ -82,6 +102,28 @@ impl Http {
     }
 
     async fn request(&self, url: &str, form: Option<&[(&str, &str)]>, accept: Option<&str>, who: &str) -> AppResult<Vec<u8>> {
+        let body = match form {
+            Some(f) => Body::Form(f),
+            None => Body::None,
+        };
+        let r = self.send(url, body, Auth::None, accept, who).await?;
+        if (200..300).contains(&r.status) {
+            return Ok(r.body);
+        }
+        let message = if r.status == 429 {
+            format!("{who} is limiting requests right now. Try again in a few minutes.")
+        } else {
+            format!(
+                "{who} answered with an error ({}).",
+                reqwest::StatusCode::from_u16(r.status).map(|s| s.to_string()).unwrap_or_default()
+            )
+        };
+        Err(AppError::Provider { message, offline: false })
+    }
+
+    /// Send a request and return the status and body whatever the status, retrying 429 and 5xx
+    /// as the other methods do. For APIs whose error answers matter (an expired sign-in).
+    pub async fn send(&self, url: &str, body: Body<'_>, auth: Auth<'_>, accept: Option<&str>, who: &str) -> AppResult<Reply> {
         let parsed = reqwest::Url::parse(url).map_err(|e| AppError::Other(format!("Bad provider URL: {e}")))?;
         self.check_url(&parsed)?;
         let host = parsed.host_str().unwrap_or_default().to_string();
@@ -89,9 +131,15 @@ impl Http {
         loop {
             attempt += 1;
             self.throttle(&host).await;
-            let mut req = match form {
-                Some(f) => self.client.post(parsed.clone()).form(f),
-                None => self.client.get(parsed.clone()),
+            let mut req = match body {
+                Body::None => self.client.get(parsed.clone()),
+                Body::Form(f) => self.client.post(parsed.clone()).form(f),
+                Body::Json(j) => self.client.post(parsed.clone()).json(j),
+            };
+            req = match auth {
+                Auth::None => req,
+                Auth::Basic(user, password) => req.basic_auth(user, Some(password)),
+                Auth::Bearer(token) => req.bearer_auth(token),
             };
             if let Some(a) = accept {
                 req = req.header(reqwest::header::ACCEPT, a);
@@ -100,7 +148,8 @@ impl Http {
             let retry_after = match result {
                 Ok(resp) => {
                     let status = resp.status();
-                    if status.is_success() {
+                    let retryable = status.as_u16() == 429 || status.is_server_error();
+                    if !retryable || attempt >= ATTEMPTS {
                         let bytes = resp.bytes().await.map_err(|e| net_error(who, &e))?;
                         if bytes.len() > MAX_BODY {
                             return Err(AppError::Provider {
@@ -108,16 +157,7 @@ impl Http {
                                 offline: false,
                             });
                         }
-                        return Ok(bytes.to_vec());
-                    }
-                    let retryable = status.as_u16() == 429 || status.is_server_error();
-                    if !retryable || attempt >= ATTEMPTS {
-                        let message = if status.as_u16() == 429 {
-                            format!("{who} is limiting requests right now. Try again in a few minutes.")
-                        } else {
-                            format!("{who} answered with an error ({status}).")
-                        };
-                        return Err(AppError::Provider { message, offline: false });
+                        return Ok(Reply { status: status.as_u16(), body: bytes.to_vec() });
                     }
                     resp.headers()
                         .get(reqwest::header::RETRY_AFTER)

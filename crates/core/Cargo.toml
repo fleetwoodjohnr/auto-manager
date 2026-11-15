@@ -40,6 +40,18 @@ ocrs = "=0.13.1"
 rten = "=0.26.0"
 rten-imageproc = "=0.26.0"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+# The OS keyring, for the QuickBooks sign-in (same stores as Simple Connect).
+keyring-core = "1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Pure-Rust D-Bus: no libdbus build dependency.
+zbus-secret-service-keyring-store = { version = "1", features = ["crypto-rust"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = "1.1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1.0", features = ["keychain"] }
 
 [dev-dependencies]
 rust_decimal_macros = "1.40"

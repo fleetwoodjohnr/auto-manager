@@ -104,6 +104,16 @@ Picture reading takes about 1.2 s for a VIN photo and 1.9 s for a full-HD camera
 - **Attachments**: a PNG attached to the job showed as a thumbnail loaded from the app and was then removed. The file goes in through the same command the native file picker feeds, because WebDriver can't drive the native picker.
 - **Saved searches**: an inventory search was saved under a name, cleared, and restored with one click.
 
+## QuickBooks (2026-11-14)
+
+| Suite | Result |
+|---|---|
+| `cargo test` (`quickbooks::*`, `folder_sync`) | 26 QuickBooks tests passed: export layouts (QuickBooks Online Products and Services; Desktop Item List report with title lines, a footer and negative stock in brackets; customer and vendor lists; other spreadsheets refused); first import, import again, stock and cost on request, matching existing records, non-inventory and pricing options, unusable SKUs, rollback; two computers through folder sync; QuickBooks Online sign-in (state checked, forged/declined/pasted answers, cancel), token exchange with Basic auth, refresh on an expired access token with the rotated refresh token kept, 1,001 items over two pages, Intuit faults, expired sign-in, disconnect revoking at Intuit, only GETs reaching the API |
+| `e2e/quickbooks.mjs` (real app) | Passed: an export imported (2 stock items with QuickBooks prices and stock, the service skipped) and imported again (price updated, no copies); then QuickBooks Online against a stand-in for Intuit — Connect → the sign-in answer returned to the app's listener → review (3 to add, the service and the category skipped) → apply → price changed in "QuickBooks" → Bring in again → updated → Disconnect (revoked at the stand-in, records kept); axe: no violations on the QuickBooks screen, the sign-in dialog and the review |
+| Return page (`site/quickbooks/index.html`) | Forwards only a `state` of the app's exact shape to `127.0.0.1` on ports 1024–65535; anything else stays on the page (checked with crafted values) |
+
+Not run here: QuickBooks Online against Intuit's servers (needs an Intuit developer app and its keys), and real QuickBooks export files from a company.
+
 ## Installers on every platform (release workflow, 2026-11-14)
 
 `scripts/package-smoke.py` ran on the six native runners (run 43668066770, all passed). For each package it installed it the way a person would, then:

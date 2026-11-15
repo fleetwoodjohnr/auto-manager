@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-a7rAlA2PbmPG1BUTu9EuqMptAWkmZgCzxTuoXynMUT4='; style-src 'unsafe-inline'">
+<title>Auto Manager · QuickBooks</title>
+<style>
+  :root { color-scheme: light dark; --bg: #f6f7f9; --text: #15171a; --muted: #5b616b; --accent: #0e7490; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111316; --text: #eceef1; --muted: #a2a9b3; --accent: #22b8cf; } }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 34rem; padding: 2rem 1rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 .5rem; }
+  p { color: var(--muted); }
+  code { display: block; padding: .6rem; border-radius: 8px; background: rgb(127 127 127 / .12); overflow-wrap: anywhere; color: var(--text); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Returning to Auto Manager…</h1>
+  <p id="text">QuickBooks answered. This page hands the answer to Auto Manager on this computer; nothing is sent anywhere else.</p>
+  <code id="addr" hidden></code>
+</main>
+<script>
+// Intuit only redirects to HTTPS pages, so this one forwards QuickBooks' answer (code, state,
+// realmId) to the one-time listener Auto Manager opened on this computer. The port comes from
+// `state`, which Auto Manager made as "<port>.<48 hex characters>" and checks when it returns.
+(function () {
+  var q = location.search;
+  var state = new URLSearchParams(q).get("state") || "";
+  var m = /^([0-9]{2,5})\.[0-9a-f]{48}$/.exec(state);
+  var port = m ? Number(m[1]) : 0;
+  if (port >= 1024 && port <= 65535) {
+    location.replace("http://127.0.0.1:" + port + "/quickbooks/callback" + q);
+    // If the browser can't reach this computer's listener, the person can paste the address.
+    setTimeout(function () {
+      document.getElementById("title").textContent = "Paste this into Auto Manager";
+      document.getElementById("text").textContent = "If Auto Manager didn't say it's connected, copy this page's address and paste it into Auto Manager's “Connect to QuickBooks” window:";
+      var a = document.getElementById("addr");
+      a.textContent = location.href;
+      a.hidden = false;
+    }, 4000);
+  } else {
+    document.getElementById("title").textContent = "This page is for Auto Manager";
+    document.getElementById("text").textContent = "Start connecting from Auto Manager → Settings → QuickBooks.";
+  }
+})();
+</script>
+</body>
+</html>

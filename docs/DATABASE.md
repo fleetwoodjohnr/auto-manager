@@ -13,6 +13,7 @@ Migrations live in `crates/core/migrations/`, and `PRAGMA user_version` is the s
 - `003_business.sql`: supplier prices, purchase orders, saved searches.
 - `004_advanced.sql`: OBD sessions.
 - `005_quantities_sync.sql`: the service-bulletin source; quantities in thousandths of a unit (stock, movements, reservations, part lists, order lines, minimum and reorder levels) and `inventory_items.fractional`; the sync tables.
+- `006_external_links.sql`: `external_links (system, entity, external_id) → local_id`, which links imported QuickBooks records (`qbo:<company id>` for QuickBooks Online, `qb-file` for exports) to the inventory item, customer or supplier they became. Synced between computers, so a refresh on either one updates instead of copying. The QuickBooks Online sign-in itself is never in the database: the refresh token is in the OS keyring and the connection details in `quickbooks.json` in the data folder (this computer only).
 
 How they run:
 

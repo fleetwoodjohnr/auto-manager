@@ -4,6 +4,7 @@
 //! same record instead of adding a copy. QuickBooks itself is never changed.
 
 pub mod files;
+pub mod online;
 
 use crate::db::{self, clean};
 use crate::error::{AppError, AppResult};

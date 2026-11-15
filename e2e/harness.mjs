@@ -81,8 +81,11 @@ export async function click(b, text, { exact = false } = {}) {
             const visible = e.getClientRects().length > 0 && !e.disabled;
             return visible && (ex ? s === t || label === t : s.includes(t) || label.includes(t));
           });
+          // While a dialog is open nothing outside it can be clicked: prefer what's inside it.
+          const inDialog = matches.filter((e) => e.closest("dialog[open]"));
+          const pool = inDialog.length ? inDialog : matches;
           // Prefer a real control over a table row that merely contains it.
-          const el = matches.find((e) => e.tagName !== "TR" && !e.classList.contains("gt-row")) ?? matches[0];
+          const el = pool.find((e) => e.tagName !== "TR" && !e.classList.contains("gt-row")) ?? pool[0];
           if (!el) return false;
           el.scrollIntoView({ block: "center" });
           el.setAttribute("data-e2e", "1");

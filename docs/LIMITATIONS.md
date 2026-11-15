@@ -16,6 +16,8 @@ This report covers version 0.1.1 as of 2026-11-14. Status: **Done** works and wa
 | Per-VIN open-recall status | No public API exists. NHTSA's VIN check is an interactive web page only; the app links to it and records your answer |
 | Free torque, fluid and maintenance databases | None exists. Auto Manager **finds these values in your own manuals** and saves them with the page cited (below) |
 | Windows and macOS code signing | Needs paid certificates; first-run Gatekeeper/SmartScreen warnings until then (Windows: **More info → Run anyway**; macOS: **System Settings → Privacy & Security → Open Anyway**). The update signature check is separate and always on |
+| QuickBooks Online live connection | Built and tested against a local stand-in for Intuit (sign-in, token refresh and rotation, paging, errors, disconnect) in unit tests and the real app. **Not yet run against Intuit's servers**: that needs an Intuit developer app and its sandbox keys, and real companies also need Intuit to approve production keys (an assessment of the app). Until a release carries those keys, the app says the live connection isn't available yet and offers the export import, which brings in the same data |
+| QuickBooks export layouts | Intuit doesn't publish its export columns. The recognized layouts (QuickBooks Online Products and Services, customer and vendor lists; QuickBooks Desktop Item, Customer and Vendor lists) follow Intuit's import template and help pages, and are tested with files built to match. Not yet checked against real exports from a company |
 | Camera scanning on Windows/macOS | Uses each platform's webview permission prompt; only Linux (WebKitGTK) was exercised here. Choosing a photo works everywhere |
 
 ## Platform, data and updates
@@ -39,7 +41,7 @@ This report covers version 0.1.1 as of 2026-11-14. Status: **Done** works and wa
 | GitHub Releases updates: notes, download, verify, install, restart, no downgrades, data kept | Done | Works the same way as the other Simple Suite apps (start-up and daily check, notice, **Install and restart**, backup first). The real updater was run against each installed package on all six platforms (NSIS, macOS app, AppImage): a tampered package refused with nothing changed, the signed one installed, the data untouched. **Workflow E** (Linux AppImage, through the app's own screen) passed locally. Updating a .deb/.rpm in place uses the Tauri updater's pkexec route and wasn't run. The stable/beta channel choice was removed to match the suite |
 | Release CI | Done | `release.yml` published [v0.1.0](https://github.com/fleetwoodjohnr/auto-manager/releases/tag/v0.1.0) from all six native runners (each ran `--self-test`): 10 signed update packages, 2 DMGs, `latest.json`, `SHA256SUMS`. The manifest script verifies every signature (U) |
 | No telemetry, local by default, HTTPS, input validation, safe imports | Done | See SECURITY.md |
-| OS keyring for API credentials | Not included (not needed) | No built-in provider needs a credential |
+| OS keyring for API credentials | Done | The QuickBooks Online sign-in is kept in the system keyring (Secret Service, Credential Manager, Keychain), adapted from Simple Connect |
 
 ## Vehicle lookup and specifications
 
@@ -77,6 +79,14 @@ This report covers version 0.1.1 as of 2026-11-14. Status: **Done** works and wa
 | Bulk import/export | Done | CSV/XLSX/XLS/ODS, with an optional unit column. U |
 | Purchasing | Done | U |
 | Photos and documents on records | Done | Vehicles, parts, items and jobs; files checked by content and stored by hash. U, E2E |
+
+## QuickBooks
+
+| Spec item | Status | Notes / verification |
+|---|---|---|
+| **Bring in business data from QuickBooks** | Done (exports); Built (QuickBooks Online, see *What's left*) | Settings → QuickBooks. Products and services, sales prices, purchase costs, stock on hand, reorder points, preferred vendors, customers and vendors. Every row is previewed (add / update / no change / skip, with what changes) and applied in one transaction. U (first import; import again updates without copies; stock Auto Manager used isn't overwritten; stock and cost follow QuickBooks only when ticked, stock as a count movement; existing records matched by SKU or name; inactive, service and bundle items skipped with the reason; unusable SKUs skipped; a failure rolls everything back; two computers through folder sync don't duplicate); E2E (an export imported and imported again; the live connection's whole flow against a stand-in for Intuit) |
+| QuickBooks direction | One way | QuickBooks is never written to: only GET requests reach its API (checked in the tests). Invoices and stock changes made in Auto Manager stay in Auto Manager |
+| Not brought in | Not included | Service items (Auto Manager prices labor by rate), bundles, charges and discounts; price levels and price rules; tax rates; accounts; transactions. QuickBooks Desktop has no live link (exports only); IIF files aren't read |
 
 ## Pricing, service, maintenance
 

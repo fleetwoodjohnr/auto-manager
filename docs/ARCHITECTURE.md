@@ -69,6 +69,18 @@ Optional and account-free (`crates/core/src/folder_sync.rs`). Computers share a 
 
 Device-local data isn't synced: settings, the audit history, cached provider answers, the bundled code reference. Every computer must run the same data version; a newer or older one is skipped with a message. **Encrypted bundles** remain for a one-way full copy.
 
+## QuickBooks
+
+`crates/core/src/quickbooks/`: QuickBooks → Auto Manager, one way.
+
+- `files.rs` reads export files and `online.rs` reads QuickBooks Online. Both produce the same `QbData` (items, customers, vendors).
+- `mod.rs` previews and applies it through the ordinary `inventory`, `parts`, `customers` and `suppliers` functions, in one transaction, and records `external_links` so the next import updates the same records.
+- `online.rs`:
+  - OAuth sign-in through a one-time `127.0.0.1` listener, with Intuit redirecting to `site/quickbooks/index.html` on GitHub Pages, which forwards to it;
+  - tokens held in the OS keyring (`secrets.rs`);
+  - paged GET queries through the shared `providers::http` client (HTTPS only, retries, throttling).
+- The Tauri side (`src-tauri/src/commands/quickbooks.rs`) keeps the data read for a preview in memory, so what's applied is exactly what was shown.
+
 ## OBD-II
 
 `crates/obd` is separate from the lookup system. A `Transport` trait has two implementations: the serial port, and a scripted adapter used by the tests. `Elm327::query` refuses anything except adapter setup and the reading services 01, 02, 03, 07 and 09 02. Scans are stored as sessions (`obd_sessions`, `obd_readings`).
