@@ -2,7 +2,7 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org). The release workflow publishes the section for each version as its release notes and in-app update notes.
 
-## [Unreleased]
+## [0.1.1] - 2026-11-14
 
 - **Updates work like the other Simple Suite apps.** Auto Manager checks GitHub at start-up and once a day (when the setting is on) and shows a notice when a new version is out. **Review update** opens Settings → Updates, where **Install and restart** downloads it, checks its signature, backs up your data and restarts. Nothing installs until you choose to. The beta channel and automatic downloads were removed. Installing waits until unsaved changes are saved or discarded.
 - **Every installer is now tested on its own platform before a release.** Each package is installed the way you would install it (the Windows installer, the macOS disk image, the .deb on a clean Ubuntu, the .rpm on a clean Fedora, the AppImage), started, updated through the real updater (a tampered package must be refused) and uninstalled.

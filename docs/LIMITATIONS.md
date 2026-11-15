@@ -1,6 +1,6 @@
 # Feature completion and limitations
 
-This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and was verified as shown; **Partial** works with the stated gap; **Not included** is missing, with the reason. Verification codes:
+This report covers version 0.1.1 as of 2026-11-14. Status: **Done** works and was verified as shown; **Partial** works with the stated gap; **Not included** is missing, with the reason. Verification codes:
 
 - **U**: unit and integration tests in `cargo test`.
 - **E2E**: the real app driven through WebDriver (`e2e/`).
@@ -15,7 +15,7 @@ This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and wa
 | OBD-II with a real adapter | Tested end to end through a real serial port against a stand-in ELM327 (CR line endings, echo, chunked and multi-frame replies), in the app and in CI. Not yet confirmed with physical adapters, whose quirks vary by make and clone |
 | Per-VIN open-recall status | No public API exists. NHTSA's VIN check is an interactive web page only; the app links to it and records your answer |
 | Free torque, fluid and maintenance databases | None exists. Auto Manager **finds these values in your own manuals** and saves them with the page cited (below) |
-| Windows and macOS code signing | Needs paid certificates; first-run Gatekeeper/SmartScreen warnings until then. The update signature check is separate and always on |
+| Windows and macOS code signing | Needs paid certificates; first-run Gatekeeper/SmartScreen warnings until then (Windows: **More info → Run anyway**; macOS: **System Settings → Privacy & Security → Open Anyway**). The update signature check is separate and always on |
 | Camera scanning on Windows/macOS | Uses each platform's webview permission prompt; only Linux (WebKitGTK) was exercised here. Choosing a photo works everywhere |
 
 ## Platform, data and updates
@@ -24,7 +24,7 @@ This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and wa
 |---|---|---|
 | Tauri 2 desktop app: React + TypeScript, Tailwind, Rust, SQLite | Done | E2E on Linux x64 (Fedora 44, WebKitGTK 2.54) |
 | Windows x64/ARM64, macOS Intel/Apple silicon, Linux ARM64 | Done (built and tested) | CI builds and runs the full test suite natively on all six. The release workflow also builds the installers and runs `--self-test` on each |
-| Packages: NSIS, DMG, AppImage, DEB, RPM | Done (Linux packages verified here) | AppImage, DEB and RPM built and checked locally ([TEST_REPORT](TEST_REPORT.md)). Windows and macOS installers come from the release workflow |
+| Packages: NSIS, DMG, AppImage, DEB, RPM | Done (installed and run on every platform) | Before each release the workflow installs every package natively and runs it: the NSIS installer on Windows x64/ARM64 (then uninstalls it), the DMG on macOS Intel/Apple silicon (signature verified), the .deb on a clean Ubuntu 24.04 and the .rpm on a clean Fedora (both x64 and ARM64, then removed), the AppImage under Xvfb ([TEST_REPORT](TEST_REPORT.md)) |
 | Flatpak | Not included | Optional in the spec. Needs its own manifest and Flathub's update route; documented in RELEASING.md |
 | Simple Suite design: tokens, typography, navigation, dialogs, settings, icon | Done | M; WCAG 2.2 A/AA audit with axe in both themes (E2E) |
 | Light/dark/system theme, persisted | Done | E2E |
@@ -36,7 +36,7 @@ This report covers version 0.1.0 as of 2026-11-14. Status: **Done** works and wa
 | CSV/JSON export | Done | Inventory CSV/XLSX; full JSON (quantities in units); reports CSV/XLSX. U |
 | **Two-way sync between computers** | Done | Through a shared folder (Syncthing, Dropbox, OneDrive, network share, USB stick). Each computer publishes its full state, encrypted (Argon2id + ChaCha20-Poly1305); changes merge per record (latest change wins, deletions kept). Repairs: references to deleted records, the same VIN/SKU/document added twice (merged into one), clashing job/invoice/order numbers (later one renumbered), stock recomputed from the ledger with one reported correction when two computers took the same stock, a job completed on both deducted once. U (7 two-computer scenarios; the double-deduction test was confirmed to fail when its safeguard is removed); E2E (two app instances through one folder). Device-local settings (theme, language, update channel) and the audit history aren't synced |
 | Encrypted bundles (move everything) | Done | Still available for a one-way copy |
-| GitHub Releases updates: semver, notes, download, verify, install, restart, channels, no downgrades, data kept | Done (Linux AppImage); Partial (other formats) | **Workflow E** passed locally with real AppImages (E2E). Stable/beta selection and DEB/RPM/NSIS/DMG installs use the Tauri updater's supported routes, but **haven't been run** until real releases exist (checklist in RELEASING.md) |
+| GitHub Releases updates: notes, download, verify, install, restart, no downgrades, data kept | Done | Works the same way as the other Simple Suite apps (start-up and daily check, notice, **Install and restart**, backup first). The real updater was run against each installed package on all six platforms (NSIS, macOS app, AppImage): a tampered package refused with nothing changed, the signed one installed, the data untouched. **Workflow E** (Linux AppImage, through the app's own screen) passed locally. Updating a .deb/.rpm in place uses the Tauri updater's pkexec route and wasn't run. The stable/beta channel choice was removed to match the suite |
 | Release CI | Done | `release.yml` published [v0.1.0](https://github.com/fleetwoodjohnr/auto-manager/releases/tag/v0.1.0) from all six native runners (each ran `--self-test`): 10 signed update packages, 2 DMGs, `latest.json`, `SHA256SUMS`. The manifest script verifies every signature (U) |
 | No telemetry, local by default, HTTPS, input validation, safe imports | Done | See SECURITY.md |
 | OS keyring for API credentials | Not included (not needed) | No built-in provider needs a credential |

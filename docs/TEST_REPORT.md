@@ -78,7 +78,7 @@ What each workflow checked:
 - **E**:
   - interrupted download: refused, AppImage unchanged (SHA-256);
   - wrong signature: refused, unchanged;
-  - good package: verified and installed after "Restart and install", one pre-update backup;
+  - good package: verified and installed after "Install and restart", one pre-update backup;
   - the relaunched app reported **0.1.1** and still had the saved vehicle.
 
 ## Cross-platform CI
@@ -104,6 +104,23 @@ Picture reading takes about 1.2 s for a VIN photo and 1.9 s for a full-HD camera
 - **Attachments**: a PNG attached to the job showed as a thumbnail loaded from the app and was then removed. The file goes in through the same command the native file picker feeds, because WebDriver can't drive the native picker.
 - **Saved searches**: an inventory search was saved under a name, cleared, and restored with one click.
 
+## Installers on every platform (release workflow, 2026-11-14)
+
+`scripts/package-smoke.py` ran on the six native runners (run 43668066770, all passed). For each package it installed it the way a person would, then:
+
+| Platform | Installed with | Checked |
+|---|---|---|
+| Windows x64, ARM64 | NSIS installer, silent, to a scratch folder | PE architecture; OCR models bundled; app stayed up 10 s and created its database; `--self-test` ok before and after the update; uninstaller removed every file |
+| macOS Intel, Apple silicon | DMG mounted, app copied out | `codesign --verify --deep --strict` before and after the update; architecture; OCR models bundled; app stayed up 10 s; `--self-test` ok before and after the update |
+| Linux x64, ARM64 | `.deb` on a clean `ubuntu:24.04`, `.rpm` on a clean `fedora:latest` | dependencies installed by apt/dnf; `--self-test` ok; desktop entry present; package removed cleanly |
+| Linux x64, ARM64 | AppImage | OCR models bundled; app stayed up 10 s under Xvfb; `--self-test` ok |
+
+**Updates** on each (Windows NSIS, macOS app, AppImage): the real updater (`src-tauri/examples/update_rehearsal.rs`, CI-only), installed as "0.0.9", read a local `latest.json`. A corrupted package was refused by the signature check with the installation and data unchanged; the genuine signed package then installed (on Windows through its NSIS installer), and the database was byte-for-byte unchanged.
+
+The same Linux checks passed on this machine against the published v0.1.0 RPM and AppImage (the RPM in a clean Fedora container).
+
+**Workflow E** (the app's own Updates screen, Linux AppImage) was re-run with the new flow and passed twice in a row: Check now → notice "Auto Manager 0.1.1 is available." → an interrupted download and a package that doesn't match its signature refused, AppImage unchanged → Install and restart → AppImage replaced, one pre-update backup, relaunched as 0.1.1 with the saved vehicle.
+
 ## Published release v0.1.0
 
 The release workflow built, signed and self-tested on all six native runners and published 24 assets. `releases/latest/download/latest.json` lists version 0.1.0 with all 10 platforms. The downloaded x86-64 AppImage matched `SHA256SUMS` and its `--self-test` printed `{"version":"0.1.0","schema":5,"integrity":"ok"}`.
@@ -124,8 +141,8 @@ The .deb and .rpm weren't installed system-wide on this machine. The update rout
 
 ## Not verified here
 
-- Installing the Windows and macOS packages, and in-app updates on any platform from GitHub: v0.1.0 is published (built and `--self-test`ed on all six runners), but an update needs a second release to update to.
-- Real GitHub release updates (stable and beta): see the checklist in RELEASING.md.
+- An update from the published GitHub release to the next one on a real computer (the update itself was exercised on every platform against local copies; see above).
+- Gatekeeper and SmartScreen on a downloaded copy: the CI runners install from local files, which aren't quarantined.
 - OBD-II with a physical adapter. The client is tested through a real serial port against a stand-in ELM327 written for this project (`crates/obd/tests/elm327_sim.py`, Python standard library); installing the third-party `ELM327-emulator` package wasn't permitted in this session.
 - The camera on Windows and macOS (Linux was exercised through WebKit's mock camera).
 - Code-signed or notarized builds.
