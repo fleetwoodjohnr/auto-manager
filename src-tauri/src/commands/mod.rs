@@ -8,6 +8,7 @@ pub mod business;
 pub mod catalog;
 pub mod docs;
 pub mod intel;
+pub mod quickbooks;
 pub mod sales;
 pub mod stock;
 pub mod system;

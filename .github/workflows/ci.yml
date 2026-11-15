@@ -54,6 +54,7 @@ jobs:
       - run: node e2e/sync.mjs
       - run: node e2e/scan.mjs
       - run: node e2e/obd.mjs
+      - run: node e2e/quickbooks.mjs
       - run: node e2e/a11y.mjs
       - uses: actions/upload-artifact@v4
         if: always()

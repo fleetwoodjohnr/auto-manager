@@ -31,6 +31,7 @@ pub mod providers;
 pub mod purchasing;
 pub mod qty;
 pub mod quality;
+pub mod quickbooks;
 pub mod reports;
 pub mod scan;
 pub mod search;

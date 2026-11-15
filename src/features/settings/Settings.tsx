@@ -11,6 +11,7 @@ import { Badge, ExtLink, Loaded, PageHead, ProgressBar, Spinner, Tabs, useConfir
 import { bytes, dateTime } from "../../lib/format";
 import { useUpdates } from "./updates";
 import { FolderSync } from "./FolderSync";
+import { QuickBooks } from "./QuickBooks";
 import { t, tx, lang, LANGUAGES, setLanguage, type Lang } from "../../i18n";
 
 const WIDGET_LABEL: Record<string, string> = {
@@ -73,6 +74,7 @@ export default function Settings() {
           { id: "inventory", label: t("Inventory") },
           { id: "pricing", label: t("Pricing") },
           { id: "data", label: t("Data and backups") },
+          { id: "quickbooks", label: "QuickBooks" },
           { id: "updates", label: t("Updates") },
         ]}
       />
@@ -83,6 +85,7 @@ export default function Settings() {
           {tab === "inventory" && <InventorySettings s={settings} save={save} />}
           {tab === "pricing" && <PricingSettings />}
           {tab === "data" && <DataSettings s={settings} save={save} />}
+          {tab === "quickbooks" && <QuickBooks />}
           {tab === "updates" && <Updates s={settings} save={save} />}
         </>
       ) : (

@@ -107,6 +107,7 @@ const TABLES: &[Spec] = &[
     row("purchase_orders"),
     row("po_lines"),
     row("saved_searches"),
+    pair("external_links", &["system", "entity", "external_id"]),
     Spec {
         table: "obd_sessions",
         key: ID,
@@ -1250,6 +1251,37 @@ mod tests {
 
     fn on_hand(p: &Pc, item: &str) -> Qty {
         p.core.read(|c| Ok(inv::get(c, item)?.on_hand)).unwrap()
+    }
+
+    #[test]
+    fn quickbooks_links_travel_so_the_other_computer_updates_instead_of_copying() {
+        use crate::quickbooks::{self, QbCustomer, QbData, QbOptions};
+        let folder = tempfile::tempdir().unwrap();
+        let (a, b) = (pc(folder.path(), "Front desk"), pc(folder.path(), "Workshop"));
+        let data = |phone: &str| QbData {
+            customers: vec![QbCustomer {
+                external_id: "58".into(),
+                name: "Ada Lovelace".into(),
+                phone: phone.into(),
+                active: true,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        a.core.tx(|c| quickbooks::apply(c, "qbo:1", &data("111"), &QbOptions::default())).unwrap();
+        sync(&a.core).unwrap();
+        sync(&b.core).unwrap();
+        // The customer was renamed here; QuickBooks' next refresh on the other computer still finds it.
+        b.core.tx(|c| Ok(c.execute("UPDATE customers SET name = 'Ada King'", [])?)).unwrap();
+        let s = b.core.tx(|c| quickbooks::apply(c, "qbo:1", &data("222"), &QbOptions::default())).unwrap();
+        assert_eq!((s.added, s.updated), (0, 1));
+        sync(&b.core).unwrap();
+        sync(&a.core).unwrap();
+        for p in [&a, &b] {
+            let all = p.core.read(|c| customers::list(c, None)).unwrap();
+            assert_eq!(all.len(), 1, "one customer on {}", p.core.paths.root.display());
+            assert_eq!((all[0].name.as_str(), all[0].phone.as_str()), ("Ada Lovelace", "222"));
+        }
     }
 
     #[test]

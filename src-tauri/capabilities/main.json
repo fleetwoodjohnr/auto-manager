@@ -132,6 +132,8 @@
     "allow-bulletin-import",
     "allow-manual-spec-suggestions",
     "allow-manual-interval-suggestions",
+    "allow-quickbooks-file-preview",
+    "allow-quickbooks-file-apply",
     "allow-profile-list",
     "allow-profile-save",
     "allow-profile-set-default",

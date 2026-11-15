@@ -2,6 +2,10 @@
 
 All notable changes are recorded here. Versions follow [Semantic Versioning](https://semver.org). The release workflow publishes the section for each version as its release notes and in-app update notes.
 
+## [Unreleased]
+
+- **QuickBooks import.** Settings → QuickBooks imports a QuickBooks Online or Desktop export (products and services, customers, vendors). You see what will be added, updated or skipped before anything is saved. Stock items get their QuickBooks price, cost, quantity, reorder point and preferred vendor. Importing again later updates the same records instead of adding copies; stock and cost only follow QuickBooks if you tick it. QuickBooks itself is never changed.
+
 ## [0.1.1] - 2026-11-14
 
 - **Updates work like the other Simple Suite apps.** Auto Manager checks GitHub at start-up and once a day (when the setting is on) and shows a notice when a new version is out. **Review update** opens Settings → Updates, where **Install and restart** downloads it, checks its signature, backs up your data and restarts. Nothing installs until you choose to. The beta channel and automatic downloads were removed. Installing waits until unsaved changes are saved or discarded.
