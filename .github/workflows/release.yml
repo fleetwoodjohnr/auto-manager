@@ -25,6 +25,7 @@ jobs:
           - { os: macos-15-intel, target: x86_64-apple-darwin, platform: darwin, arch: x86_64 }
           - { os: macos-15, target: aarch64-apple-darwin, platform: darwin, arch: aarch64 }
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     env:
       HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
       HAS_WINDOWS_SIGN: ${{ secrets.WINDOWS_SIGN_COMMAND != '' }}

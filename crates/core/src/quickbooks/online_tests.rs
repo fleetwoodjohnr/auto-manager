@@ -27,6 +27,8 @@ fn browser_get(s: &SignIn, target: String) -> std::thread::JoinHandle<String> {
     let port = s.listener.local_addr().unwrap().port();
     std::thread::spawn(move || {
         let mut c = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        // Never wait forever on an answer that isn't coming.
+        c.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
         c.write_all(format!("GET {target} HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n").as_bytes()).unwrap();
         let mut out = String::new();
         c.read_to_string(&mut out).unwrap();
@@ -43,12 +45,17 @@ fn sign_in_is_answered_on_this_computer_and_checks_the_state() {
     assert!(s.url.contains("scope=com.intuit.quickbooks.accounting") && s.url.contains("client_id=test-client"), "{}", s.url);
     assert_eq!(s.redirect, format!("http://127.0.0.1:{port}/quickbooks/callback"));
 
-    let favicon = browser_get(&s, "/favicon.ico".into());
-    let page = browser_get(&s, format!("/quickbooks/callback?code=C0DE&state={state}&realmId=9130"));
-    let cb = s.wait(Duration::from_secs(5)).unwrap();
+    // The browser asks for other things first (a favicon); the listener answers 404 and keeps
+    // waiting. Sent one after the other: the listener stops at the answer it wants.
+    let s = std::sync::Arc::new(s);
+    let waiter = {
+        let s = s.clone();
+        std::thread::spawn(move || s.wait(Duration::from_secs(20)))
+    };
+    assert!(browser_get(&s, "/favicon.ico".into()).join().unwrap().starts_with("HTTP/1.1 404"));
+    let page = browser_get(&s, format!("/quickbooks/callback?code=C0DE&state={state}&realmId=9130")).join().unwrap();
+    let cb = waiter.join().unwrap().unwrap();
     assert_eq!(cb, Callback { code: "C0DE".into(), realm: "9130".into() });
-    assert!(favicon.join().unwrap().starts_with("HTTP/1.1 404"));
-    let page = page.join().unwrap();
     assert!(page.contains("connected to QuickBooks") && page.contains("default-src 'none'"), "{page}");
 }
 
