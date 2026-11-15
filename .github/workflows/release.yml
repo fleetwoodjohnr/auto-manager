@@ -38,8 +38,9 @@ jobs:
           targets: ${{ matrix.target }}
       - name: Verify native runner architecture
         shell: bash
+        # No pipe: `grep -q` exits on the first match and rustc's next write would fail (SIGPIPE).
         run: |
-          rustc -vV | grep -q "host: ${{ matrix.target }}"
+          [[ "$(rustc -vV)" == *"host: ${{ matrix.target }}"* ]] || { rustc -vV; echo "Not a native ${{ matrix.target }} runner"; exit 1; }
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
