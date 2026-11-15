@@ -104,6 +104,10 @@ Picture reading takes about 1.2 s for a VIN photo and 1.9 s for a full-HD camera
 - **Attachments**: a PNG attached to the job showed as a thumbnail loaded from the app and was then removed. The file goes in through the same command the native file picker feeds, because WebDriver can't drive the native picker.
 - **Saved searches**: an inventory search was saved under a name, cleared, and restored with one click.
 
+## Published release v0.1.0
+
+The release workflow built, signed and self-tested on all six native runners and published 24 assets. `releases/latest/download/latest.json` lists version 0.1.0 with all 10 platforms. The downloaded x86-64 AppImage matched `SHA256SUMS` and its `--self-test` printed `{"version":"0.1.0","schema":5,"integrity":"ok"}`.
+
 ## Packaging (Linux x86-64)
 
 The release build was signed with the project's updater key (`npx tauri build`, 2026-11-14):
@@ -120,7 +124,7 @@ The .deb and .rpm weren't installed system-wide on this machine. The update rout
 
 ## Not verified here
 
-- Windows and macOS installers and in-app updates: the release workflow builds them on a version tag; not run yet (no release tagged). Their tests and builds pass in CI.
+- Installing the Windows and macOS packages, and in-app updates on any platform from GitHub: v0.1.0 is published (built and `--self-test`ed on all six runners), but an update needs a second release to update to.
 - Real GitHub release updates (stable and beta): see the checklist in RELEASING.md.
 - OBD-II with a physical adapter. The client is tested through a real serial port against a stand-in ELM327 written for this project (`crates/obd/tests/elm327_sim.py`, Python standard library); installing the third-party `ELM327-emulator` package wasn't permitted in this session.
 - The camera on Windows and macOS (Linux was exercised through WebKit's mock camera).
